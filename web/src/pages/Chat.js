@@ -3,12 +3,15 @@ import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import InputBar from '../components/InputBar';
 import LoadingSpinner from '../components/LoadingSpinner'; // Import the LoadingSpinner component
+import { Navbar, Select, SelectItem } from '@nextui-org/react';
+import { modelOptions } from '../options/modelOptions';
 
 export const Chat = () => {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false); // New state for loading
   const chatWindowRef = useRef(null);
+  const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
 
   const scrollToBottom = () => {
     if (chatWindowRef.current) {
@@ -20,13 +23,18 @@ export const Chat = () => {
     scrollToBottom();
   }, [messages]);
 
+
+  useEffect(() => {
+    console.log("Selected model:", selectedModel);
+  }, [selectedModel]);
+
   const getAIResponse = async () => {
     try {
       setIsLoading(true); // Set loading state to true
       const requestData = {
         "user_input": userInput,
         "chat_history": messages,
-        "chat_model": "gpt-3.5-turbo",
+        "chat_model": selectedModel.value,
         "temperature": 0.8
       }
 
@@ -60,6 +68,27 @@ export const Chat = () => {
 
   return (
     <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
+      <Navbar className="w-full fixed top-0 z-10">
+        <Select
+          className="max-w-xs"
+          defaultSelectedKeys={[modelOptions[0].value]}
+          onChange={(event) => setSelectedModel(
+            modelOptions.find((model) => model.value === event.target.value)
+          )} // Update selected model on change
+          label="Select model"
+          startContent={selectedModel.companyLogo}
+        >
+          {modelOptions.map((model) => (
+            <SelectItem
+              key={model.value}
+              className="max-w-xs"
+              startContent={model.companyLogo}
+            >
+              {model.label}
+            </SelectItem>
+          ))}
+        </Select>
+      </Navbar>
       <div className="flex-1 flex flex-col gap-3 px-4 pt-16 mb-4 chat-window overflow-y-auto">
         {messages.map((message, index) => (
           <React.Fragment key={index}>
