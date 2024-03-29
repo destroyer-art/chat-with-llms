@@ -14,6 +14,9 @@ from langchain.prompts import (
 )
 from langchain.chains import LLMChain
 from langchain.memory import ConversationBufferMemory
+from langchain_anthropic import ChatAnthropic
+from langchain_mistralai import ChatMistralAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 dotenv.load_dotenv()
 
@@ -52,6 +55,20 @@ class ChatResponse(BaseModel):
 
     response: str
 
+model_company_mapping = {
+    "gpt-3.5-turbo": ChatOpenAI,
+    "gpt-4-turbo-preview": ChatOpenAI,
+    "gpt-4": ChatOpenAI,
+    "claude-3-opus-20240229" : ChatAnthropic,
+    "claude-3-sonnet-20240229" : ChatAnthropic,
+    "claude-3-haiku-20240307" : ChatAnthropic,
+    "mistral-tiny-2312": ChatMistralAI,
+    "mistral-small-2312": ChatMistralAI,
+    "mistral-small-2402": ChatMistralAI,
+    "mistral-medium-2312": ChatMistralAI,
+    "mistral-large-2402": ChatMistralAI,
+    "gemini-pro": ChatGoogleGenerativeAI,
+}
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
@@ -60,14 +77,30 @@ async def generic_exception_handler(request, exc):
     return {"message": "Internal server error", "detail": str(exc)}, 500
 
 
-@app.post("/v1/openai/chat", response_model=ChatResponse, tags=["OpenAI"])
-async def openai_chat(request: ChatRequest):
+@app.post("/v1/chat", response_model=ChatResponse, tags=["OpenAI"])
+async def chat_conversation(request: ChatRequest):
     """Chat endpoint for the OpenAI chatbot."""
     try:
-        chat = ChatOpenAI(model=request.chat_model, temperature=request.temperature)
+        # Get the chat model from the request and create the corresponding chat instance
+        chat_model = request.chat_model
+        chat = model_company_mapping.get(chat_model)
+        if chat is None:
+            raise ValueError(f"Invalid chat model: {chat_model}")
+        
+        print("Chat model: ", chat_model)
+
+        
+        # Create the chat prompt and memory for the conversation
+        chat = chat(
+            model_name=chat_model,
+            model=chat_model,
+            temperature=request.temperature,
+        )
+
+
         prompt = ChatPromptTemplate(
             messages=[
-                SystemMessagePromptTemplate.from_template(""),
+                # SystemMessagePromptTemplate.from_template(""),
                 MessagesPlaceholder(variable_name="chat_history"),
                 HumanMessagePromptTemplate.from_template("{user_input}"),
             ]

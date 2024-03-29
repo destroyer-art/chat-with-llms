@@ -40,7 +40,7 @@ export const Chat = () => {
 
       setUserInput("");
 
-      const response = await fetch("http://localhost:5000/v1/openai/chat", {
+      const response = await fetch("http://localhost:5000/v1/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -76,7 +76,7 @@ export const Chat = () => {
             modelOptions.find((model) => model.value === event.target.value)
           )} // Update selected model on change
           label="Select model"
-          startContent={selectedModel.companyLogo}
+          startContent={selectedModel?.companyLogo}
         >
           {modelOptions.map((model) => (
             <SelectItem
