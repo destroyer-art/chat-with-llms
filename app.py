@@ -1,7 +1,10 @@
 """This is the main file for the chatbot application."""
 import logging
 import os
+import json
 from fastapi import FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ValidationError
 from langchain_openai import ChatOpenAI
@@ -17,6 +20,8 @@ from langchain.memory import ConversationBufferMemory
 from langchain_anthropic import ChatAnthropic
 from langchain_mistralai import ChatMistralAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_community.chat_models import ChatPerplexity
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 
 dotenv.load_dotenv()
 
@@ -55,6 +60,12 @@ class ChatResponse(BaseModel):
 
     response: str
 
+class ChatEventStreaming(BaseModel):
+    """Chat event streaming model for the chat endpoint."""
+    event: str
+    data: str
+    is_final: bool
+
 model_company_mapping = {
     "gpt-3.5-turbo": ChatOpenAI,
     "gpt-4-turbo-preview": ChatOpenAI,
@@ -68,6 +79,10 @@ model_company_mapping = {
     "mistral-medium-2312": ChatMistralAI,
     "mistral-large-2402": ChatMistralAI,
     "gemini-pro": ChatGoogleGenerativeAI,
+    "sonar-small-chat": ChatPerplexity,
+    "sonar-small-online": ChatPerplexity,
+    "sonar-medium-chat" : ChatPerplexity,
+    "sonar-medium-online" : ChatPerplexity,
 }
 
 @app.exception_handler(Exception)
@@ -125,6 +140,62 @@ async def chat_conversation(request: ChatRequest):
         # Log and handle generic exceptions gracefully
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.post("/v1/chat_event_streaming", tags=["OpenAI"])
+async def chat_event_streaming(request: ChatRequest):
+    """Chat Event Streaming endpoint for the OpenAI chatbot."""
+    try:
+        # Get the chat model from the request and create the corresponding chat instance
+        chat_model = request.chat_model
+        chat = model_company_mapping.get(chat_model)
+        if chat is None:
+            raise ValueError(f"Invalid chat model: {chat_model}")
+    
+        
+        # Create the chat prompt and memory for the conversation
+        chat = chat(
+            model_name=chat_model,
+            model=chat_model,
+            temperature=request.temperature,
+            streaming=True,
+            callbacks=[StreamingStdOutCallbackHandler()]
+        )
+
+
+        prompt = ChatPromptTemplate(
+            messages=[
+                # SystemMessagePromptTemplate.from_template(""),
+                MessagesPlaceholder(variable_name="chat_history"),
+                HumanMessagePromptTemplate.from_template("{user_input}"),
+            ]
+        )
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=True)
+
+        # Seed the chat history with the user's input from the request
+        for chat_history in request.chat_history:
+            memory.chat_memory.add_user_message(chat_history.user_message)
+            memory.chat_memory.add_ai_message(chat_history.ai_message)
+
+        # Run the conversation.invoke method in a separate thread
+        def event_streaming():
+            response = conversation.invoke(input=request.user_input, callback=StreamingStdOutCallbackHandler())
+            chat_event = ChatEventStreaming(event="response", data=response["text"], is_final=True)
+            json_data = jsonable_encoder(chat_event)
+            yield f"{json.dumps(json_data)}\n\n"
+
+        
+
+        return StreamingResponse(event_streaming(), media_type="text/event-stream")
+    except ValidationError as ve:
+        # Handle validation errors specifically for better user feedback
+        logging.error("Validation error: %s", ve)
+        raise HTTPException(status_code=400, detail="Invalid request data") from ve
+    except Exception as e:
+        # Log and handle generic exceptions gracefully
+        logging.error("Error processing chat request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
 
 
 if __name__ == "__main__":

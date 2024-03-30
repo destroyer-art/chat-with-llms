@@ -14,4 +14,8 @@ export const modelOptions = [
     { label: "Mistral-medium-latest", value: "mistral-medium-2312", companyLogo: <img src="./mistral.svg" alt="" width={20} height={20} /> },
     { label: "Mistral-large-latest", value: "mistral-large-2402", companyLogo: <img src="./mistral.svg" alt="" width={20} height={20} /> },
     { label: "Gemini-Pro", value: "gemini-pro", companyLogo: <FcGoogle />},
+    { label: "Sonar-Small-Chat", value: "sonar-small-chat", companyLogo: <img src="./perplexity.png" alt="" width={20} height={20} /> },
+    { label: "Sonar-Small-Online", value: "sonar-small-online", companyLogo: <img src="./perplexity.png" alt="" width={20} height={20} /> },
+    { label: "Sonar-Medium-Chat", value: "sonar-medium-chat", companyLogo: <img src="./perplexity.png" alt="" width={20} height={20} /> },
+    { label: "Sonar-Medium-Online", value: "sonar-medium-online", companyLogo: <img src="./perplexity.png" alt="" width={20} height={20} /> },
 ];

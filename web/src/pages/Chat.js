@@ -67,65 +67,67 @@ export const Chat = () => {
   }
 
   return (
-    <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
-      <Navbar className="w-full fixed top-0 z-10">
-        <Select
-          className="max-w-xs"
-          defaultSelectedKeys={[modelOptions[0].value]}
-          onChange={(event) => setSelectedModel(
-            modelOptions.find((model) => model.value === event.target.value)
-          )} // Update selected model on change
-          label="Select model"
-          startContent={selectedModel?.companyLogo}
-        >
-          {modelOptions.map((model) => (
-            <SelectItem
-              key={model.value}
-              className="max-w-xs"
-              startContent={model.companyLogo}
-            >
-              {model.label}
-            </SelectItem>
-          ))}
-        </Select>
+    <>
+      <Navbar>
+          <Select
+            className="max-w-xs float-right"
+            defaultSelectedKeys={[modelOptions[0].value]}
+            onChange={(event) => setSelectedModel(
+              modelOptions.find((model) => model.value === event.target.value)
+            )} // Update selected model on change
+            label="Select model"
+            startContent={selectedModel?.companyLogo}
+          >
+            {modelOptions.map((model) => (
+              <SelectItem
+                key={model.value}
+                className="max-w-xs"
+                startContent={model.companyLogo}
+              >
+                {model.label}
+              </SelectItem>
+            ))}
+          </Select>
       </Navbar>
-      <div className="flex-1 flex flex-col gap-3 px-4 pt-16 mb-4 chat-window overflow-y-auto">
-        {messages.map((message, index) => (
-          <React.Fragment key={index}>
-            {message.user_message !== "" && (
-              <div className="w-full flex justify-end">
-                <UserCard message={message.user_message} />
-              </div>
-            )}
-            {message.ai_message !== "" && (
-              <div className="w-full flex justify-start">
-                <AiCard message={message.ai_message} />
-              </div>
-            )}
-            {isLoading && message.ai_message === "" && ( // Render loading spinner for the last message if AI is generating response
-              <div className="w-full flex justify-start">
-                <LoadingSpinner /> {/* Render the LoadingSpinner component */}
-              </div>
-            )}
-          </React.Fragment>
-        ))}
-        <div ref={chatWindowRef} />
+      <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
+        <div className="flex-1 flex flex-col gap-3 px-4 pt-16 mb-4 chat-window overflow-y-auto">
+          {messages.map((message, index) => (
+            <React.Fragment key={index}>
+              {message.user_message !== "" && (
+                <div className="w-full flex justify-end">
+                  <UserCard message={message.user_message} />
+                </div>
+              )}
+              {message.ai_message !== "" && (
+                <div className="w-full flex justify-start">
+                  <AiCard message={message.ai_message} />
+                </div>
+              )}
+              {isLoading && message.ai_message === "" && ( // Render loading spinner for the last message if AI is generating response
+                <div className="w-full flex justify-start">
+                  <LoadingSpinner /> {/* Render the LoadingSpinner component */}
+                </div>
+              )}
+            </React.Fragment>
+          ))}
+          <div ref={chatWindowRef} />
+        </div>
+        <div className="sticky inset-x-0 bottom-0 justify-center">
+          <InputBar
+            userInput={userInput}
+            setUserInput={setUserInput}
+            onSend={(message) => {
+              const newMessages = [...messages];
+              newMessages.push({
+                ai_message: "",
+                user_message: message
+              });
+              setMessages(newMessages);
+              getAIResponse(newMessages);
+            }}
+          />
+        </div>
       </div>
-      <div className="sticky inset-x-0 bottom-0 justify-center">
-        <InputBar
-          userInput={userInput}
-          setUserInput={setUserInput}
-          onSend={(message) => {
-            const newMessages = [...messages];
-            newMessages.push({
-              ai_message: "",
-              user_message: message
-            });
-            setMessages(newMessages);
-            getAIResponse(newMessages);
-          }}
-        />
-      </div>
-    </div>
+    </>
   )
 }
