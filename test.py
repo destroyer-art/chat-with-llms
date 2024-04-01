@@ -29,7 +29,6 @@ if response.status_code == 200:
             events = chunk.split('\n\n')
             for event in events:
                 # Parse the event JSON data
-                event_data = json.loads(event)
-                print(event_data)
+                print(event)
 else:
     print(f"Error: {response.status_code} - {response.text}")

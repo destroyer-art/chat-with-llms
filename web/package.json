@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@mapbox/rehype-prism": "^0.9.0",
+    "@microsoft/fetch-event-source": "^2.0.1",
     "@nextui-org/react": "^2.2.10",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",

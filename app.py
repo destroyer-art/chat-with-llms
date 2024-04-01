@@ -21,7 +21,8 @@ from langchain_anthropic import ChatAnthropic
 from langchain_mistralai import ChatMistralAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_models import ChatPerplexity
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from langchain_core.output_parsers import StrOutputParser
+
 
 dotenv.load_dotenv()
 
@@ -157,8 +158,6 @@ async def chat_event_streaming(request: ChatRequest):
             model_name=chat_model,
             model=chat_model,
             temperature=request.temperature,
-            streaming=True,
-            callbacks=[StreamingStdOutCallbackHandler()]
         )
 
 
@@ -170,7 +169,9 @@ async def chat_event_streaming(request: ChatRequest):
             ]
         )
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=True)
+        parser = StrOutputParser()
+
+        conversation = prompt | chat | parser
 
         # Seed the chat history with the user's input from the request
         for chat_history in request.chat_history:
@@ -179,12 +180,12 @@ async def chat_event_streaming(request: ChatRequest):
 
         # Run the conversation.invoke method in a separate thread
         def event_streaming():
-            response = conversation.invoke(input=request.user_input, callback=StreamingStdOutCallbackHandler())
-            chat_event = ChatEventStreaming(event="response", data=response["text"], is_final=True)
-            json_data = jsonable_encoder(chat_event)
-            yield f"{json.dumps(json_data)}\n\n"
-
-        
+            for token in conversation.stream({"chat_history": memory.buffer, "user_input": request.user_input}):
+                response = ChatEventStreaming(event="stream", data=token, is_final=False)
+                yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
+            
+            response = ChatEventStreaming(event="stream", data="", is_final=True)
+            yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
 
         return StreamingResponse(event_streaming(), media_type="text/event-stream")
     except ValidationError as ve:
