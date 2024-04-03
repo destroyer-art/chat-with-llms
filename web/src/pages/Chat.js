@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import InputBar from '../components/InputBar';
@@ -17,11 +17,12 @@ export const Chat = () => {
   const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
       chatWindowRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  };
+  }, []);
+
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming) {
@@ -30,7 +31,7 @@ export const Chat = () => {
     }
   };
 
-  const onSend = (message) => {
+  const onSend = async (message) => {
     // return if the message is empty or only contains spaces
     if (!message.trim()) return;
     const newMessages = [...messages];
@@ -39,12 +40,13 @@ export const Chat = () => {
       user_message: message
     });
     setMessages(newMessages);
-    getAIResponse();
+    console.log(messages)
+    await getAIResponse();
   }
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [scrollToBottom, messages]);
 
 
   // const getAIResponse = async () => {
@@ -106,14 +108,14 @@ export const Chat = () => {
         onopen(res) {
           if (res.ok && res.status === 200) {
             console.log("Event source connection established");
+            setIsStreaming(true);
           } else {
             console.error("Failed to establish event source connection");
           }
         },
         onmessage(event) {
           const data = JSON.parse(event.data);
-          setIsLoading(false);
-          setIsStreaming(true);
+          setIsLoading(true);
 
           // if isStreaming is false then stop the event source connection
           if (!isStreaming) {
@@ -134,10 +136,11 @@ export const Chat = () => {
           console.log("Event source connection closed");
           setIsStreaming(false);
         },
-        onerror() {
+        onerror(error) {
           console.error("Event source connection error");
           setIsStreaming(false);
           setIsLoading(false);
+          throw error;
         }
       });
     } catch (error) {
