@@ -3,10 +3,11 @@ import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import InputBar from '../components/InputBar';
 import LoadingSpinner from '../components/LoadingSpinner'; // Import the LoadingSpinner component
-import { Navbar, Select, SelectItem } from '@nextui-org/react';
+import { Navbar, Select, SelectItem, Button } from '@nextui-org/react';
 import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
-
+import { BsSendArrowUp } from "react-icons/bs";
+import { IoStopCircleOutline } from "react-icons/io5";
 
 export const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -14,7 +15,7 @@ export const Chat = () => {
   const [isLoading, setIsLoading] = useState(false); // New state for loading
   const chatWindowRef = useRef(null);
   const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
-
+  const [isStreaming, setIsStreaming] = useState(false);
 
   const scrollToBottom = () => {
     if (chatWindowRef.current) {
@@ -22,14 +23,29 @@ export const Chat = () => {
     }
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isStreaming) {
+      e.preventDefault(); // Prevent the default action to avoid a new line being added
+      onSend(userInput); // Call the onSend function with the userInput as an argument
+    }
+  };
+
+  const onSend = (message) => {
+    // return if the message is empty or only contains spaces
+    if (!message.trim()) return;
+    const newMessages = [...messages];
+    newMessages.push({
+      ai_message: "",
+      user_message: message
+    });
+    setMessages(newMessages);
+    getAIResponse();
+  }
+
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-
-  useEffect(() => {
-    console.log("Selected model:", selectedModel);
-  }, [selectedModel]);
 
   // const getAIResponse = async () => {
   //   try {
@@ -88,16 +104,21 @@ export const Chat = () => {
         },
         body: JSON.stringify(requestData),
         onopen(res) {
-          if(res.ok && res.status === 200) {
+          if (res.ok && res.status === 200) {
             console.log("Event source connection established");
           } else {
             console.error("Failed to establish event source connection");
           }
         },
         onmessage(event) {
-          console.log(event.data);
           const data = JSON.parse(event.data);
-          setIsLoading(true);
+          setIsLoading(false);
+          setIsStreaming(true);
+
+          // if isStreaming is false then stop the event source connection
+          if (!isStreaming) {
+            this.close();
+          }
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages];
             const lastIndex = updatedMessages.length - 1;
@@ -111,9 +132,12 @@ export const Chat = () => {
         },
         onclose() {
           console.log("Event source connection closed");
+          setIsStreaming(false);
         },
         onerror() {
           console.error("Event source connection error");
+          setIsStreaming(false);
+          setIsLoading(false);
         }
       });
     } catch (error) {
@@ -173,18 +197,35 @@ export const Chat = () => {
           <InputBar
             userInput={userInput}
             setUserInput={setUserInput}
-            onSend={(message) => {
-              const newMessages = [...messages];
-              newMessages.push({
-                ai_message: "",
-                user_message: message
-              });
-              setMessages(newMessages);
-              getAIResponse();
-            }}
+            endContent={
+              isStreaming ? (
+                <Button
+                  isIconOnly
+                  variant="faded"
+                  aria-label="Stop"
+                  onClick={() => {
+                    setIsStreaming(false);
+                  }}
+                >
+                  <IoStopCircleOutline />
+                </Button>
+              ) : (
+                <Button
+                  isIconOnly
+                  variant="faded"
+                  aria-label="Send"
+                  onClick={() => {
+                    onSend(userInput);
+                  }}
+                >
+                  <BsSendArrowUp />
+                </Button>
+              )
+            }
+            onKeyDown={handleKeyPress}
           />
         </div>
-      </div>
+      </div >
     </>
   )
 }
