@@ -7,7 +7,7 @@ import { Navbar, Select, SelectItem, Button } from '@nextui-org/react';
 import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
-import { IoStopCircleOutline } from "react-icons/io5";
+import { AiOutlineReload } from 'react-icons/ai';
 
 export const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -16,6 +16,7 @@ export const Chat = () => {
   const chatWindowRef = useRef(null);
   const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showRetry, setShowRetry] = useState(false); // New state for retry
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -40,13 +41,30 @@ export const Chat = () => {
       user_message: message
     });
     setMessages(newMessages);
-    console.log(messages)
     await getAIResponse();
   }
 
   useEffect(() => {
     scrollToBottom();
   }, [scrollToBottom, messages]);
+
+  const handleRetry = async () => {
+    // set user input to the last user message
+    setUserInput(messages[messages.length - 1].user_message);
+    // set the last AI message to an empty string
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages];
+      const lastIndex = updatedMessages.length - 1;
+      updatedMessages[lastIndex] = {
+        ...updatedMessages[lastIndex],
+        ai_message: "",
+      };
+      return updatedMessages;
+    });
+    
+    // call the getAIResponse function to retry the last message
+    await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1));
+  }
 
 
   // const getAIResponse = async () => {
@@ -87,12 +105,13 @@ export const Chat = () => {
   //   }
   // }
 
-  const getAIResponse = async () => {
+  const getAIResponse = async (userMessage = userInput, history = messages) => {
     try {
       setIsLoading(true);
+      setShowRetry(false);
       const requestData = {
-        "user_input": userInput,
-        "chat_history": messages,
+        "user_input": userMessage,
+        "chat_history": history,
         "chat_model": selectedModel.value,
         "temperature": 0.8
       };
@@ -117,10 +136,7 @@ export const Chat = () => {
           const data = JSON.parse(event.data);
           setIsLoading(true);
 
-          // if isStreaming is false then stop the event source connection
-          if (!isStreaming) {
-            this.close();
-          }
+
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages];
             const lastIndex = updatedMessages.length - 1;
@@ -135,11 +151,13 @@ export const Chat = () => {
         onclose() {
           console.log("Event source connection closed");
           setIsStreaming(false);
+          setShowRetry(true);
         },
         onerror(error) {
           console.error("Event source connection error");
           setIsStreaming(false);
           setIsLoading(false);
+          setShowRetry(true);
           throw error;
         }
       });
@@ -184,16 +202,28 @@ export const Chat = () => {
               )}
               {message.ai_message !== "" && (
                 <div className="w-full flex justify-start">
-                  <AiCard message={message.ai_message} />
-                </div>
-              )}
-              {isLoading && message.ai_message === "" && ( // Render loading spinner for the last message if AI is generating response
-                <div className="w-full flex justify-start">
-                  <LoadingSpinner /> {/* Render the LoadingSpinner component */}
+                  <AiCard
+                    message={message.ai_message}
+                    retryComponent={messages.length - 1 === index && showRetry ? (
+                      <button
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+                        onClick={handleRetry}
+                      >
+                        <AiOutlineReload />
+                      </button>
+                    ) : null}
+                  />
                 </div>
               )}
             </React.Fragment>
           ))}
+
+          {isLoading && messages.length > 0 && messages[messages.length - 1].ai_message === "" && (
+            <div className="w-full flex justify-start">
+              <LoadingSpinner /> {/* Render the LoadingSpinner component */}
+            </div>
+          )}
+
           <div ref={chatWindowRef} />
         </div>
         <div className="sticky inset-x-0 bottom-0 justify-center">
@@ -201,29 +231,17 @@ export const Chat = () => {
             userInput={userInput}
             setUserInput={setUserInput}
             endContent={
-              isStreaming ? (
-                <Button
-                  isIconOnly
-                  variant="faded"
-                  aria-label="Stop"
-                  onClick={() => {
-                    setIsStreaming(false);
-                  }}
-                >
-                  <IoStopCircleOutline />
-                </Button>
-              ) : (
-                <Button
-                  isIconOnly
-                  variant="faded"
-                  aria-label="Send"
-                  onClick={() => {
-                    onSend(userInput);
-                  }}
-                >
-                  <BsSendArrowUp />
-                </Button>
-              )
+              <Button
+                isIconOnly
+                variant="faded"
+                aria-label="Send"
+                onClick={() => {
+                  onSend(userInput);
+                }}
+                isDisabled={isStreaming}
+              >
+                <BsSendArrowUp />
+              </Button>
             }
             onKeyDown={handleKeyPress}
           />

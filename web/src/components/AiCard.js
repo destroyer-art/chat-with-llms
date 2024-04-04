@@ -1,20 +1,21 @@
 import React, { useState } from 'react';
 import { Card, CardBody, CardFooter } from "@nextui-org/react";
-import { AiOutlineCopy, AiOutlineCheck } from 'react-icons/ai';
+import { AiOutlineCopy, AiOutlineCheck } from 'react-icons/ai'; // Import AiOutlineReload for the retry icon
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-export const AiCard = ({ message }) => {
+export const AiCard = ({ message, retryComponent }) => {
   const [copied, setCopied] = useState(false);
   const [codeToCopy, setCodeToCopy] = useState('');
+  
 
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(message);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000); // Reset the state after 2 seconds
+      setTimeout(() => setCopied(false), 2000); // Reset the copied state after 2 seconds
     } catch (error) {
       console.error('Failed to copy:', error);
     }
@@ -24,7 +25,7 @@ export const AiCard = ({ message }) => {
     try {
       await navigator.clipboard.writeText(code);
       setCodeToCopy(code);
-      setTimeout(() => setCodeToCopy(''), 2000); // Reset the state after 2 seconds
+      setTimeout(() => setCodeToCopy(''), 2000); // Reset the codeToCopy state after 2 seconds
     } catch (error) {
       console.error('Failed to copy code:', error);
     }
@@ -37,8 +38,7 @@ export const AiCard = ({ message }) => {
           remarkPlugins={[remarkGfm]}
           children={message}
           components={{
-            code(props) {
-              const { children, className, node, ...rest } = props;
+            code({ children, className, node, ...rest }) {
               const match = /language-(\w+)/.exec(className || '');
               const code = String(children).replace(/\n$/, '');
               return match ? (
@@ -51,11 +51,7 @@ export const AiCard = ({ message }) => {
                     style={okaidia}
                   />
                   <button
-                    className={`absolute top-2 right-2 flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out ${
-                      codeToCopy === code
-                        ? 'bg-green-100 hover:bg-green-100'
-                        : ''
-                    }`}
+                    className="absolute top-2 right-2 flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
                     onClick={() => handleCodeCopy(code)}
                   >
                     {codeToCopy === code ? (
@@ -78,15 +74,20 @@ export const AiCard = ({ message }) => {
               );
             },
           }}
-        >
-          {message}
-        </ReactMarkdown>
+        />
       </CardBody>
       <CardFooter className="flex justify-end items-center p-2">
+        {/* {showRetry && (
+          <button
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+            onClick={handleRetry}
+          >
+            <AiOutlineReload />
+          </button>
+        )} */}
+        {retryComponent}
         <button
-          className={`flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out ${
-            copied ? 'bg-green-100 hover:bg-green-100' : ''
-          }`}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
           onClick={handleCopy}
         >
           {copied ? (
