@@ -17,6 +17,7 @@ export const Chat = () => {
   const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showRetry, setShowRetry] = useState(false); // New state for retry
+  const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -49,6 +50,7 @@ export const Chat = () => {
   }, [scrollToBottom, messages]);
 
   const handleRetry = async () => {
+    setIsRequestFailed(false); // set the request failed state to false
     // set user input to the last user message
     setUserInput(messages[messages.length - 1].user_message);
     // set the last AI message to an empty string
@@ -61,7 +63,7 @@ export const Chat = () => {
       };
       return updatedMessages;
     });
-    
+
     // call the getAIResponse function to retry the last message
     await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1));
   }
@@ -109,6 +111,7 @@ export const Chat = () => {
     try {
       setIsLoading(true);
       setShowRetry(false);
+      setIsRequestFailed(false);
       const requestData = {
         "user_input": userMessage,
         "chat_history": history,
@@ -152,17 +155,20 @@ export const Chat = () => {
           console.log("Event source connection closed");
           setIsStreaming(false);
           setShowRetry(true);
+          setIsLoading(false);
         },
         onerror(error) {
           console.error("Event source connection error");
           setIsStreaming(false);
           setIsLoading(false);
           setShowRetry(true);
+          setIsRequestFailed(true);
           throw error;
         }
       });
     } catch (error) {
       console.error("Error:", error);
+      setIsRequestFailed(true);
       setIsLoading(false);
     }
   };
@@ -226,26 +232,41 @@ export const Chat = () => {
 
           <div ref={chatWindowRef} />
         </div>
-        <div className="sticky inset-x-0 bottom-0 justify-center">
-          <InputBar
-            userInput={userInput}
-            setUserInput={setUserInput}
-            endContent={
+        <div className="sticky inset-x-0 bottom-0 flex justify-center items-center p-4">
+          {isRequestFailed ? (
+            <div style={{ width: '30%' }}> {/* Container to control the width */}
               <Button
-                isIconOnly
-                variant="faded"
-                aria-label="Send"
-                onClick={() => {
-                  onSend(userInput);
-                }}
-                isDisabled={isStreaming}
+                color="danger"
+                variant="shadow"
+                onClick={handleRetry}
+                className="w-full" // Make the button fill the container
+                startContent={<AiOutlineReload />}
               >
-                <BsSendArrowUp />
+                Retry
               </Button>
-            }
-            onKeyDown={handleKeyPress}
-          />
+            </div>
+          ) : (
+            <InputBar
+              userInput={userInput}
+              setUserInput={setUserInput}
+              endContent={
+                <Button
+                  isIconOnly
+                  variant="faded"
+                  aria-label="Send"
+                  onClick={() => {
+                    onSend(userInput);
+                  }}
+                  isDisabled={isStreaming}
+                >
+                  <BsSendArrowUp />
+                </Button>
+              }
+              onKeyDown={handleKeyPress}
+            />
+          )}
         </div>
+
       </div >
     </>
   )

@@ -197,10 +197,8 @@ async def chat_event_streaming(request: ChatRequest):
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
-
-
 if __name__ == "__main__":
     import uvicorn
 
     # Use multiprocessing for parallel request handling
-    uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info", workers=4)
+    uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info")
