@@ -2,7 +2,9 @@
 import logging
 import os
 import json
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer
+from jose import jwt
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +40,13 @@ app.add_middleware(
 
 # Set up logging with the configured log level from environment variables or default to ERROR.
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "ERROR"))
+
+# Define a Pydantic model for the Google ID token payload
+class GoogleTokenPayload(BaseModel):
+    iss: str = None
+    sub: str = None
+    aud: str = None
+    exp: int = None
 
 
 class ChatHistory(BaseModel):
@@ -86,11 +95,46 @@ model_company_mapping = {
     "sonar-medium-online" : ChatPerplexity,
 }
 
+# Get the secret key from the environment variable
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is not set")
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+    raise ValueError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variable is not set")    
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="https://accounts.google.com/o/oauth2/token")
+
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     """Generic exception handler to catch unexpected errors."""
     logging.error("Unexpected error occurred: %s", exc)
     return {"message": "Internal server error", "detail": str(exc)}, 500
+
+
+# Verify the Google ID token
+async def verify_google_token(token: str = Depends(oauth2_scheme)):
+    """Verify the Google ID token and return the token data."""
+    try:
+        payload = payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        token_data = GoogleTokenPayload(**payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Google ID token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    return token_data
+
+
+# Add a new endpoint to your app to handle Google OAuth2 authentication
+@app.get("/auth/google", dependencies=[Depends(verify_google_token)])
+async def google_auth():
+    """Google authentication endpoint to verify the Google ID token."""
+    return {"message": "Google authentication successful"}
 
 
 @app.post("/v1/chat", response_model=ChatResponse, tags=["OpenAI"])

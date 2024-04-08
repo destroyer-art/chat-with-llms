@@ -15,6 +15,9 @@ langchain-google-genai = "*"
 langchain-anthropic = "*"
 fastapi = "*"
 uvicorn = "*"
+python-jose = "*"
+python-multipart = "*"
+authlib = "*"
 
 [dev-packages]
 
