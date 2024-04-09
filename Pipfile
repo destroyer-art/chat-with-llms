@@ -18,6 +18,7 @@ uvicorn = "*"
 python-jose = "*"
 python-multipart = "*"
 authlib = "*"
+google-auth = "*"
 
 [dev-packages]
 

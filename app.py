@@ -3,11 +3,13 @@ import logging
 import os
 import json
 from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
+from jose import jwt
 from pydantic import BaseModel, ValidationError
 from langchain_openai import ChatOpenAI
 import dotenv
@@ -26,6 +28,8 @@ from langchain_community.chat_models import ChatPerplexity
 from langchain_core.output_parsers import StrOutputParser
 
 
+
+
 dotenv.load_dotenv()
 
 app = FastAPI()
@@ -41,8 +45,12 @@ app.add_middleware(
 # Set up logging with the configured log level from environment variables or default to ERROR.
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "ERROR"))
 
+# This will just define that the Authorization header is required
+auth_scheme = HTTPBearer()
+
 # Define a Pydantic model for the Google ID token payload
 class GoogleTokenPayload(BaseModel):
+    """Google ID token payload model."""
     iss: str = None
     sub: str = None
     aud: str = None
@@ -105,8 +113,6 @@ GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
 if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     raise ValueError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variable is not set")    
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="https://accounts.google.com/o/oauth2/token")
-
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
@@ -115,26 +121,34 @@ async def generic_exception_handler(request, exc):
     return {"message": "Internal server error", "detail": str(exc)}, 500
 
 
-# Verify the Google ID token
-async def verify_google_token(token: str = Depends(oauth2_scheme)):
-    """Verify the Google ID token and return the token data."""
-    try:
-        payload = payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-        token_data = GoogleTokenPayload(**payload)
-    except Exception as exc:
+# Dependency for verifying Google ID token
+async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+    """Verify the Google ID token and return the user info."""
+    if credentials:
+        token = credentials.credentials
+        try:
+            idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
+            return idinfo
+        except ValueError as exc:
+            # Invalid token
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired Google ID token",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from exc
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired Google ID token",
+            detail="Authorization header missing",
             headers={"WWW-Authenticate": "Bearer"},
-        ) from exc
-    return token_data
+        )
 
 
-# Add a new endpoint to your app to handle Google OAuth2 authentication
-@app.get("/auth/google", dependencies=[Depends(verify_google_token)])
-async def google_auth():
+@app.get("/auth/google")
+async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
-    return {"message": "Google authentication successful"}
+    # idinfo now contains the token information
+    return {"message": "Google authentication successful", "user_id": idinfo['sub']}
 
 
 @app.post("/v1/chat", response_model=ChatResponse, tags=["OpenAI"])
