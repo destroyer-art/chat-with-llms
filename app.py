@@ -1,14 +1,15 @@
 """This is the main file for the chatbot application."""
+import datetime
 import logging
 import os
 import json
 from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from jose import jwt
 from pydantic import BaseModel, ValidationError
 from langchain_openai import ChatOpenAI
@@ -120,6 +121,15 @@ async def generic_exception_handler(request, exc):
     logging.error("Unexpected error occurred: %s", exc)
     return {"message": "Internal server error", "detail": str(exc)}, 500
 
+@app.exception_handler(HTTPException)
+async def custom_http_exception_handler(request, exc: HTTPException):
+    """Custom HTTP exception handler to catch HTTP exceptions."""
+    return JSONResponse(
+        status_code=exc.status_code if exc.status_code else status.HTTP_403_FORBIDDEN,
+        content={"status": exc.status_code if exc.status_code else status.HTTP_403_FORBIDDEN, "details": exc.detail},
+    )
+
+
 
 # Dependency for verifying Google ID token
 async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)):
@@ -144,15 +154,40 @@ async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depend
         )
 
 
-@app.get("/auth/google")
+@app.get("/auth/google", response_model=dict, tags=["Authentication Endpoints"])
 async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
-    # idinfo now contains the token information
-    return {"message": "Google authentication successful", "user_id": idinfo['sub']}
+    # create a new JWT token using this token and the secret key with expiry time of 30 days
+    token = jwt.encode({"sub": idinfo["sub"], "exp": datetime.datetime.utcnow() + datetime.timedelta(days=30)}, SECRET_KEY, algorithm="HS256")
+    return {"accessToken": token}
+
+# Example usage within your verify_token dependency
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):
+    """Verify the JWT token and return the user info."""
+    if credentials:
+        token = credentials.credentials
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            return payload
+        except jwt.JWTError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired token",
+            ) from exc
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing",
+        )
+    
+@app.get("/verify", tags=["Authentication Endpoints"])
+async def verify_token_info(token_info: dict = Depends(verify_token)):
+    """Verify the JWT token and return the user info."""
+    return {"token_info": token_info}
 
 
-@app.post("/v1/chat", response_model=ChatResponse, tags=["OpenAI"])
-async def chat_conversation(request: ChatRequest):
+@app.post("/v1/chat", response_model=ChatResponse, tags=["AI Endpoints"])
+async def chat_conversation(request: ChatRequest, token_info: dict = Depends(verify_token)):
     """Chat endpoint for the OpenAI chatbot."""
     try:
         # Get the chat model from the request and create the corresponding chat instance
@@ -200,8 +235,8 @@ async def chat_conversation(request: ChatRequest):
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
-@app.post("/v1/chat_event_streaming", tags=["OpenAI"])
-async def chat_event_streaming(request: ChatRequest):
+@app.post("/v1/chat_event_streaming", tags=["AI Endpoints"])
+async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(verify_token)):
     """Chat Event Streaming endpoint for the OpenAI chatbot."""
     try:
         # Get the chat model from the request and create the corresponding chat instance

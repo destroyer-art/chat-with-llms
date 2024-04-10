@@ -8,6 +8,7 @@ import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
 import { AiOutlineReload } from 'react-icons/ai';
+import { useNavigate } from 'react-router-dom';
 
 export const Chat = () => {
   const [messages, setMessages] = useState([]);
@@ -18,6 +19,8 @@ export const Chat = () => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showRetry, setShowRetry] = useState(false); // New state for retry
   const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
+  const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
+  const navigate = useNavigate();
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -124,13 +127,16 @@ export const Chat = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Accept: "text/event-stream"
+          Accept: "text/event-stream",
+          'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(requestData),
         onopen(res) {
           if (res.ok && res.status === 200) {
             console.log("Event source connection established");
             setIsStreaming(true);
+          } else if (res.status === 403) {
+            navigate('/'); // Redirect to the login page
           } else {
             console.error("Failed to establish event source connection");
           }
