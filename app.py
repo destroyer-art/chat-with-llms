@@ -3,7 +3,7 @@ import datetime
 import logging
 import os
 import json
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from google.oauth2 import id_token
 from google.auth.transport import requests
@@ -27,9 +27,9 @@ from langchain_mistralai import ChatMistralAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_models import ChatPerplexity
 from langchain_core.output_parsers import StrOutputParser
-
-
-
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
 
 dotenv.load_dotenv()
 
@@ -46,17 +46,14 @@ app.add_middleware(
 # Set up logging with the configured log level from environment variables or default to ERROR.
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "ERROR"))
 
+# Initialize a Firestore client with a specific service account key file
+cred = credentials.Certificate("serviceAccount.json")
+firebase_admin.initialize_app(cred)
+
+db = firestore.client()
+
 # This will just define that the Authorization header is required
 auth_scheme = HTTPBearer()
-
-# Define a Pydantic model for the Google ID token payload
-class GoogleTokenPayload(BaseModel):
-    """Google ID token payload model."""
-    iss: str = None
-    sub: str = None
-    aud: str = None
-    exp: int = None
-
 
 class ChatHistory(BaseModel):
     """Chat history model for the request and response."""
@@ -115,6 +112,17 @@ if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     raise ValueError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variable is not set")    
 
 
+async def add_user_to_db(user_ref, user_data):
+    """
+    Background task to add or update the user in the database.
+    """
+    user = user_ref.get()
+    if user.exists:
+        print(user.to_dict())
+    else:
+        print("User does not exist")
+        user_ref.set(user_data)
+
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     """Generic exception handler to catch unexpected errors."""
@@ -129,15 +137,24 @@ async def custom_http_exception_handler(request, exc: HTTPException):
         content={"status": exc.status_code if exc.status_code else status.HTTP_403_FORBIDDEN, "details": exc.detail},
     )
 
-
-
-# Dependency for verifying Google ID token
-async def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)):
+async def verify_google_token(background_tasks: BackgroundTasks, credentials: HTTPAuthorizationCredentials = Depends(auth_scheme)):
     """Verify the Google ID token and return the user info."""
     if credentials:
         token = credentials.credentials
         try:
             idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
+            # Check if the user is in the database using the sub field, in the collection users the sub is set to google_user_id field
+            user_ref = db.collection('users').document(idinfo['sub'])
+            user_data = {
+                'email': idinfo['email'],
+                'username': idinfo['name'],
+                'profile_picture': idinfo['picture'],
+                'google_user_id': idinfo['sub'],
+            }
+
+            # Add or update the user in the database as a background task
+            background_tasks.add_task(add_user_to_db, user_ref, user_data)
+
             return idinfo
         except ValueError as exc:
             # Invalid token
@@ -159,7 +176,7 @@ async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
     # create a new JWT token using this token and the secret key with expiry time of 30 days
     token = jwt.encode({"sub": idinfo["sub"], "exp": datetime.datetime.utcnow() + datetime.timedelta(days=30)}, SECRET_KEY, algorithm="HS256")
-    return {"accessToken": token}
+    return {"accessToken": token, "user": idinfo, "token_type": "Bearer"}
 
 # Example usage within your verify_token dependency
 async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())):

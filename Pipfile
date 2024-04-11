@@ -19,6 +19,7 @@ python-jose = "*"
 python-multipart = "*"
 authlib = "*"
 google-auth = "*"
+google-cloud-firestore = "*"
 
 [dev-packages]
 
