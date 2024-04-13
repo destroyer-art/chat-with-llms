@@ -3,6 +3,8 @@ import datetime
 import logging
 import os
 import json
+import uuid
+from google.cloud import firestore as google_firestore
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from google.oauth2 import id_token
@@ -122,6 +124,59 @@ async def add_user_to_db(user_ref, user_data):
     else:
         print("User does not exist")
         user_ref.set(user_data)
+
+
+async def add_message_to_db(request, google_user_id, user_message, ai_message):
+    """
+    Background task to add the chat message to the database.
+    """
+    chat_id = None
+    # check if chat_id key exists in the request
+    if 'chat_id' in request:
+        chat_id = request['chat_id']
+
+    # check if the chat_id exists in the database
+    chat_ref = db.collection('chats').document(chat_id)
+    if chat_ref.get().exists:
+        # check if the google_user_id matches the google_user_id in the chat
+        chat_data = chat_ref.get().to_dict()
+        if chat_data['google_user_id'] == google_user_id:
+
+            chat_ref.update({
+                'updated_at': google_firestore.SERVER_TIMESTAMP,
+            })
+
+            db.collection('chat_history').add({
+                'ai_message': ai_message,
+                'user_message': user_message,
+                'chat_id': chat_id,
+                'created_at': google_firestore.SERVER_TIMESTAMP,
+                'updated_at': google_firestore.SERVER_TIMESTAMP,
+            })
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden",
+            )
+    else:
+        # create a new chat id and add the chat to the database
+        chat_id = str(uuid.uuid4())
+        chat_ref.set({
+            'chat_id': chat_id,
+            'google_user_id': google_user_id,
+            'created_at': google_firestore.SERVER_TIMESTAMP,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
+
+        db.collection('chat_history').add({
+            'ai_message': ai_message,
+            'user_message': user_message,
+            'chat_id': chat_id,
+            'created_at': google_firestore.SERVER_TIMESTAMP,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
+
+
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
@@ -287,15 +342,22 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
         for chat_history in request.chat_history:
             memory.chat_memory.add_user_message(chat_history.user_message)
             memory.chat_memory.add_ai_message(chat_history.ai_message)
+        
+        generated_ai_message = ""
 
         # Run the conversation.invoke method in a separate thread
-        def event_streaming():
+        async def event_streaming():
+            nonlocal generated_ai_message
             for token in conversation.stream({"chat_history": memory.buffer, "user_input": request.user_input}):
+                generated_ai_message += token
                 response = ChatEventStreaming(event="stream", data=token, is_final=False)
                 yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
             
             response = ChatEventStreaming(event="stream", data="", is_final=True)
             yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
+
+            # Database update after streaming is completed
+            await add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message)
 
         return StreamingResponse(event_streaming(), media_type="text/event-stream")
     except ValidationError as ve:
