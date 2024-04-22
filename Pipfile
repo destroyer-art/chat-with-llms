@@ -20,6 +20,7 @@ python-multipart = "*"
 authlib = "*"
 google-auth = "*"
 google-cloud-firestore = "*"
+firebase-admin = "*"
 
 [dev-packages]
 
