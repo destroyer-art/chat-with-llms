@@ -20,6 +20,7 @@ export const Chat = () => {
   const [showRetry, setShowRetry] = useState(false); // New state for retry
   const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
   const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
+  const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture'));
   const navigate = useNavigate();
 
   const scrollToBottom = useCallback(() => {
@@ -209,7 +210,7 @@ export const Chat = () => {
             <React.Fragment key={index}>
               {message.user_message !== "" && (
                 <div className="w-full flex justify-end">
-                  <UserCard message={message.user_message} />
+                  <UserCard message={message.user_message} profilePicture={profilePicture} />
                 </div>
               )}
               {message.ai_message !== "" && (

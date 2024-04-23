@@ -15,7 +15,9 @@ export const useGoogleAuth = () => {
       if (backendResponse.ok) {
         const data = await backendResponse.json();
         let accessToken = data.accessToken;
+        let profilePicture = data.user.picture;
         localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('profilePicture', profilePicture);
         navigate('/chat');
       } else {
         console.error('Google authentication failed');
