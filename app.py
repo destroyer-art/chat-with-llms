@@ -7,13 +7,12 @@ import uuid
 from google.cloud import firestore as google_firestore
 from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from google.oauth2 import id_token
-from google.auth.transport import requests
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse, JSONResponse
 from jose import jwt
 from pydantic import BaseModel, ValidationError
+import requests
 from langchain_openai import ChatOpenAI
 import dotenv
 from langchain.prompts import (
@@ -197,20 +196,26 @@ async def verify_google_token(background_tasks: BackgroundTasks, credentials: HT
     if credentials:
         token = credentials.credentials
         try:
-            idinfo = id_token.verify_oauth2_token(token, requests.Request(), GOOGLE_CLIENT_ID)
+            request = requests.get("https://www.googleapis.com/oauth2/v3/userinfo", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+
+            # Check if the request was successful
+            request.raise_for_status()
+
+            credentials = request.json()
+            
             # Check if the user is in the database using the sub field, in the collection users the sub is set to google_user_id field
-            user_ref = db.collection('users').document(idinfo['sub'])
+            user_ref = db.collection('users').document(credentials['sub'])
             user_data = {
-                'email': idinfo['email'],
-                'username': idinfo['name'],
-                'profile_picture': idinfo['picture'],
-                'google_user_id': idinfo['sub'],
+                'email': credentials['email'],
+                'username': credentials['name'],
+                'profile_picture': credentials['picture'],
+                'google_user_id': credentials['sub'],
             }
 
             # Add or update the user in the database as a background task
             background_tasks.add_task(add_user_to_db, user_ref, user_data)
 
-            return idinfo
+            return credentials
         except ValueError as exc:
             # Invalid token
             raise HTTPException(
@@ -229,7 +234,7 @@ async def verify_google_token(background_tasks: BackgroundTasks, credentials: HT
 @app.get("/auth/google", response_model=dict, tags=["Authentication Endpoints"])
 async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
-    # create a new JWT token using this token and the secret key with expiry time of 30 days
+    # create a new JWT token using sub and the secret key with expiry time of 30 days
     token = jwt.encode({"sub": idinfo["sub"], "exp": datetime.datetime.utcnow() + datetime.timedelta(days=30)}, SECRET_KEY, algorithm="HS256")
     return {"accessToken": token, "user": idinfo, "token_type": "Bearer"}
 

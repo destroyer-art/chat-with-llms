@@ -21,6 +21,7 @@ authlib = "*"
 google-auth = "*"
 google-cloud-firestore = "*"
 firebase-admin = "*"
+google-auth-oauthlib = "*"
 
 [dev-packages]
 

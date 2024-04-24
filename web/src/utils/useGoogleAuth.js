@@ -4,7 +4,10 @@ export const useGoogleAuth = () => {
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (tokenResponse) => {
-    const idToken = tokenResponse.credential;
+    console.log('Google authentication success:', tokenResponse)
+
+    const idToken = tokenResponse.access_token;
+
     try {
       const backendResponse = await fetch('http://localhost:5000/auth/google', {
         headers: {
