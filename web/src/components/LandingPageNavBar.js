@@ -3,9 +3,12 @@ import { Button } from "@nextui-org/react";
 import { FcGoogle } from "react-icons/fc";
 import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleAuth } from '../utils/useGoogleAuth';
+import { verifyGoogleAuth } from '../utils/verifyGoogleAuth';
+import { useNavigate } from 'react-router-dom';
 
 export const LandingPageNavBar = () => {
     const { handleGoogleSuccess, handleGoogleFailure } = useGoogleAuth();
+    const navigate = useNavigate();
 
     const login = useGoogleLogin({
         onSuccess: handleGoogleSuccess,
@@ -26,7 +29,15 @@ export const LandingPageNavBar = () => {
                         
                     )}
                 /> */}
-                <Button color="primary" variant="bordered" className='border-zinc-300' startContent={<FcGoogle />} onClick={login}>
+                <Button color="primary" variant="bordered" className='border-zinc-300' startContent={<FcGoogle />} onClick={
+                    async () => {
+                        const isVerified = await verifyGoogleAuth();
+                        if (isVerified)
+                            navigate('/chat');
+                        else
+                            login();
+                    }
+                }>
                     Sign in
                 </Button>
             </div>

@@ -4,10 +4,11 @@ import { Link } from 'react-router-dom';
 import { FcGoogle } from "react-icons/fc";
 import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleAuth } from '../utils/useGoogleAuth';
-
+import { verifyGoogleAuth } from '../utils/verifyGoogleAuth';
+import { useNavigate } from 'react-router-dom';
 
 export const LandingPagePromotion = () => {
-
+  const navigate = useNavigate();
   const { handleGoogleSuccess, handleGoogleFailure } = useGoogleAuth();
 
   const login = useGoogleLogin({
@@ -29,7 +30,15 @@ export const LandingPagePromotion = () => {
           <Button
             className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium shadow transition-colors"
             variant="primary"
-            onClick={login}
+            onClick={
+              async () => {
+                const isVerified = await verifyGoogleAuth();
+                if (isVerified)
+                    navigate('/chat');
+                else
+                    login();
+            }
+          }
           >
             <FcGoogle className="h-5 w-5 mr-2" />
             Sign in with Google

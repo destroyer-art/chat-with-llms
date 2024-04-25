@@ -18,6 +18,10 @@ export const ProtectedPage = ({ children }) => {
         if (response.ok) {
           console.log('Google authentication successful');
           setIsAuthenticated(true);
+          // check current route
+          if (window.location.pathname === '/') {
+            navigate('/chat');
+          }
         } else {
           console.error('Google authentication failed');
           navigate('/');

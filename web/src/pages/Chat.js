@@ -183,29 +183,32 @@ export const Chat = () => {
 
   return (
     <>
-      <Navbar>
-        <Select
-          className="max-w-xs float-right"
-          defaultSelectedKeys={[modelOptions[0].value]}
-          onChange={(event) => setSelectedModel(
-            modelOptions.find((model) => model.value === event.target.value)
-          )} // Update selected model on change
-          label="Select model"
-          startContent={selectedModel?.companyLogo}
-        >
-          {modelOptions.map((model) => (
-            <SelectItem
-              key={model.value}
-              className="max-w-xs"
-              startContent={model.companyLogo}
-            >
-              {model.label}
-            </SelectItem>
-          ))}
-        </Select>
-      </Navbar>
+      <div className='flex justify-between min-h-[8dvh]'>
+        <div className='px-4 lg:px-6 justify-start flex items-center w-96 fixed'>
+          <Select
+            className="w-full"
+            defaultSelectedKeys={[modelOptions[0].value]}
+            onChange={(event) => setSelectedModel(
+              modelOptions.find((model) => model.value === event.target.value)
+            )} // Update selected model on change
+            label="Select model"
+            startContent={selectedModel?.companyLogo}
+          >
+            {modelOptions.map((model) => (
+              <SelectItem
+                key={model.value}
+                className="max-w-xs"
+                startContent={model.companyLogo}
+              >
+                {model.label}
+              </SelectItem>
+            ))}
+          </Select>
+        </div>
+      </div>
+
       <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
-        <div className="flex-1 flex flex-col gap-3 px-4 pt-16 mb-4 chat-window overflow-y-auto">
+        <div className="flex-1 flex flex-col gap-3 px-4 pt-16 pb-16 mb-4 chat-window overflow-y-auto relative">
           {messages.map((message, index) => (
             <React.Fragment key={index}>
               {message.user_message !== "" && (
@@ -238,8 +241,10 @@ export const Chat = () => {
           )}
 
           <div ref={chatWindowRef} />
+          
         </div>
-        <div className="sticky inset-x-0 bottom-0 flex justify-center items-center p-4">
+        <div className="fixed inset-x-0 bottom-0 p-4">
+          <div className="flex justify-center">
           {isRequestFailed ? (
             <div style={{ width: '30%' }}> {/* Container to control the width */}
               <Button
@@ -254,6 +259,7 @@ export const Chat = () => {
             </div>
           ) : (
             <InputBar
+              className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
               userInput={userInput}
               setUserInput={setUserInput}
               endContent={
@@ -272,6 +278,9 @@ export const Chat = () => {
               onKeyDown={handleKeyPress}
             />
           )}
+          </div>
+
+          
         </div>
 
       </div >

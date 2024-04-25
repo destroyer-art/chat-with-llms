@@ -9,7 +9,9 @@ function App() {
     <NextUIProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<LoginPage />} />
+          <Route path="/" element={
+            <LoginPage />
+          } />
           <Route
             path="/chat"
             element={
