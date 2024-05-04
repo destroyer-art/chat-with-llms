@@ -186,7 +186,7 @@ export const Chat = () => {
       <div className='flex justify-between min-h-[8dvh]'>
         <div className='px-4 lg:px-6 justify-start flex items-center w-96 fixed'>
           <Select
-            className="w-full"
+            className="w-52 md:w-full"
             defaultSelectedKeys={[modelOptions[0].value]}
             onChange={(event) => setSelectedModel(
               modelOptions.find((model) => model.value === event.target.value)
