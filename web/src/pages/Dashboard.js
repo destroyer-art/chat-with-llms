@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Chat } from './Chat';
 import { Card, CardBody } from "@nextui-org/react";
 
@@ -6,11 +6,41 @@ import { Card, CardBody } from "@nextui-org/react";
 export const Dashboard = () => {
     // State to manage the visibility of the sidebar
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);  // Start with the sidebar closed
+    const [chatHistory, setChatHistory] = useState([]);  // Start with an empty chat history
+    const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));  // Start with an empty access token
 
     // Function to toggle sidebar visibility
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
     };
+
+    const fetchUserChatHistory = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/v1/chat_history', {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            })
+
+            if (response.ok) {
+                const data = await response.json();
+                // sort the chat history by the latest chat (updated_at) first
+                data.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                setChatHistory(data);
+            } else {
+                console.error('Error fetching chat history:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Error fetching chat history:', error);
+        }
+    };
+
+
+    useEffect(() => {
+        console.log('Dashboard rendered')
+        if (chatHistory.length === 0 && accessToken)
+            fetchUserChatHistory();
+    }, [accessToken]);
 
     return (
         <div className="flex min-h-screen">
@@ -37,17 +67,19 @@ export const Dashboard = () => {
                 </div>
 
                 <div className="grid grid-cols-1 pt-5 pl-5 pr-5 items-center justify-start">
-                    <Card shadow="none" className='bg-slate-700 hover:bg-slate-600 text-sm text-white'>
+                    {chatHistory.map((chat, index) => (
+                        <Card shadow="none" className='bg-slate-700 hover:bg-slate-600 text-sm text-white' key={index}>
                         <CardBody>
-                            <p>Make beautiful websites regardless of your design experience.</p>
+                            <p>{chat?.chat_title}</p>
                         </CardBody>
                     </Card>
+                    ))}
                 </div>
             </div>
 
             {/* Main content area, adjust margin based on sidebar state */}
             <div className={`flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-4'}`}>
-                <Chat />
+                <Chat fetchUserChatHistory={fetchUserChatHistory} />
             </div>
         </div>
     );

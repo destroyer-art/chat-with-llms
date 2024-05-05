@@ -3,14 +3,14 @@ import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import InputBar from '../components/InputBar';
 import LoadingSpinner from '../components/LoadingSpinner'; // Import the LoadingSpinner component
-import { Navbar, Select, SelectItem, Button } from '@nextui-org/react';
+import { Select, SelectItem, Button } from '@nextui-org/react';
 import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
 import { AiOutlineReload } from 'react-icons/ai';
 import { useNavigate } from 'react-router-dom';
 
-export const Chat = () => {
+export const Chat = ({fetchUserChatHistory}) => {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false); // New state for loading
@@ -21,6 +21,7 @@ export const Chat = () => {
   const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
   const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture'));
+  const [chatId, setChatId] = useState(null);
   const navigate = useNavigate();
 
   const scrollToBottom = useCallback(() => {
@@ -53,7 +54,7 @@ export const Chat = () => {
     scrollToBottom();
   }, [scrollToBottom, messages]);
 
-  const handleRetry = async () => {
+  const handleRetry = async (regenerateMessage=false) => {
     setIsRequestFailed(false); // set the request failed state to false
     // set user input to the last user message
     setUserInput(messages[messages.length - 1].user_message);
@@ -69,7 +70,7 @@ export const Chat = () => {
     });
 
     // call the getAIResponse function to retry the last message
-    await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1));
+    await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1), regenerateMessage);
   }
 
 
@@ -111,7 +112,47 @@ export const Chat = () => {
   //   }
   // }
 
-  const getAIResponse = async (userMessage = userInput, history = messages) => {
+  useEffect(() => {
+    if (chatId !== null) {
+      // Append the chatId to the URL in path parameter
+      navigate(`?chatId=${chatId}`);
+    }
+  }, [chatId]);
+
+
+  const getTitle = async (userHistory, chatId) => {
+    try {
+      const requestData = {
+        "user_input": userInput,
+        "chat_history": userHistory,
+        "chat_model": selectedModel.value,
+        "temperature": 0.8,
+        "chat_id": chatId,
+      };
+
+      const response = await fetch('http://localhost:5000/v1/chat_title', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (response.ok) {
+        await fetchUserChatHistory();
+      } else {
+        console.error('Error fetching chat title:', response.statusText);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching chat title:', error);
+      return null;
+    }
+  }
+
+
+  const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage=false) => {
     try {
       setIsLoading(true);
       setShowRetry(false);
@@ -120,9 +161,20 @@ export const Chat = () => {
         "user_input": userMessage,
         "chat_history": history,
         "chat_model": selectedModel.value,
-        "temperature": 0.8
+        "temperature": 0.8,
+        "chat_id": chatId,
+        "regenerate_message" : regenerateMessage
       };
       setUserInput("");
+
+      let userHistory = [
+        {
+          ai_message: "",
+          user_message: userMessage
+        }
+      ];
+
+      let idChat = chatId;
 
       await fetchEventSource("http://localhost:5000/v1/chat_event_streaming", {
         method: "POST",
@@ -146,6 +198,22 @@ export const Chat = () => {
           const data = JSON.parse(event.data);
           setIsLoading(true);
 
+          if (chatId === null) {
+            if(data.is_final)
+              setChatId(data.chat_id);
+              idChat = data.chat_id;
+          }
+
+          // update userHistory
+          userHistory = ((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastIndex = updatedMessages.length - 1;
+            updatedMessages[lastIndex] = {
+              ...updatedMessages[lastIndex],
+              ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+            };
+            return updatedMessages;
+          })(userHistory);
 
           setMessages((prevMessages) => {
             const updatedMessages = [...prevMessages];
@@ -163,6 +231,9 @@ export const Chat = () => {
           setIsStreaming(false);
           setShowRetry(true);
           setIsLoading(false);
+          if (messages.length === 0) {
+            getTitle(userHistory, idChat);
+          }
         },
         onerror(error) {
           console.error("Event source connection error");
@@ -223,7 +294,9 @@ export const Chat = () => {
                     retryComponent={messages.length - 1 === index && showRetry ? (
                       <button
                         className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
-                        onClick={handleRetry}
+                        onClick={() => {
+                          handleRetry(true);
+                        }}
                       >
                         <AiOutlineReload />
                       </button>
@@ -279,11 +352,8 @@ export const Chat = () => {
             />
           )}
           </div>
-
-          
         </div>
-
-      </div >
+      </div>
     </>
   )
 }

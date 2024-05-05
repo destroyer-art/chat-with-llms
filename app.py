@@ -12,6 +12,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import StreamingResponse, JSONResponse
 from jose import jwt
 from pydantic import BaseModel, ValidationError
+from typing import Optional
 import requests
 from langchain_openai import ChatOpenAI
 import dotenv
@@ -31,6 +32,8 @@ from langchain_core.output_parsers import StrOutputParser
 import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
+
 
 dotenv.load_dotenv()
 
@@ -70,7 +73,8 @@ class ChatRequest(BaseModel):
     chat_history: list[ChatHistory]
     chat_model: str = "gpt-3.5-turbo"
     temperature: float = 0.8
-
+    chat_id: Optional[str] = None
+    regenerate_message: Optional[bool] = False
 
 class ChatResponse(BaseModel):
     """Chat response model for the chat endpoint."""
@@ -82,6 +86,15 @@ class ChatEventStreaming(BaseModel):
     event: str
     data: str
     is_final: bool
+    chat_id: Optional[str] = None
+
+class ChatUserHistory(BaseModel):
+    """Chat user history model for the chat history endpoint."""
+    chat_id: str
+    chat_title: Optional[str]
+    chat_model: str
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
 
 model_company_mapping = {
     "gpt-3.5-turbo": ChatOpenAI,
@@ -125,57 +138,76 @@ async def add_user_to_db(user_ref, user_data):
         user_ref.set(user_data)
 
 
-async def add_message_to_db(request, google_user_id, user_message, ai_message):
+def add_message_to_db(request, google_user_id, user_message, ai_message):
     """
     Background task to add the chat message to the database.
     """
     chat_id = None
-    # check if chat_id key exists in the request
-    if 'chat_id' in request:
-        chat_id = request['chat_id']
 
-    # check if the chat_id exists in the database
-    chat_ref = db.collection('chats').document(chat_id)
-    if chat_ref.get().exists:
-        # check if the google_user_id matches the google_user_id in the chat
-        chat_data = chat_ref.get().to_dict()
+    # Check if chat_id key exists in the request
+    if not hasattr(request, 'chat_id'):
+        logging.error('Request object does not have a chat_id attribute')
+        return None
+
+    chat_id = request.chat_id
+
+    # Check if the chat_id exists in the database in the chat_id column
+    chat_ref = db.collection('chats').where(filter=FieldFilter('chat_id', '==', chat_id)).limit(1).stream()
+    chat_data = next(chat_ref, None)
+
+    if chat_data:
+        # Check if the google_user_id matches the google_user_id in the chat
+        chat_data = chat_data.to_dict()
         if chat_data['google_user_id'] == google_user_id:
-
-            chat_ref.update({
-                'updated_at': google_firestore.SERVER_TIMESTAMP,
-            })
-
-            db.collection('chat_history').add({
-                'ai_message': ai_message,
-                'user_message': user_message,
-                'chat_id': chat_id,
-                'created_at': google_firestore.SERVER_TIMESTAMP,
-                'updated_at': google_firestore.SERVER_TIMESTAMP,
-            })
+            try:
+                # Update the chat with the new message
+                chat_doc_ref = db.collection('chats').document(chat_id)
+                chat_doc_ref.update({
+                    'updated_at': google_firestore.SERVER_TIMESTAMP,
+                    'model' : request.chat_model
+                })
+                db.collection('chat_history').add({
+                    'ai_message': ai_message,
+                    'user_message': user_message,
+                    'chat_id': chat_id,
+                    'created_at': google_firestore.SERVER_TIMESTAMP,
+                    'updated_at': google_firestore.SERVER_TIMESTAMP,
+                    'regenerate_message' : request.regenerate_message,
+                    'model' : request.chat_model
+                })
+            except Exception as e:
+                logging.error(f'Error updating chat: {e}')
         else:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Forbidden",
             )
     else:
-        # create a new chat id and add the chat to the database
-        chat_id = str(uuid.uuid4())
-        chat_ref.set({
-            'chat_id': chat_id,
-            'google_user_id': google_user_id,
-            'created_at': google_firestore.SERVER_TIMESTAMP,
-            'updated_at': google_firestore.SERVER_TIMESTAMP,
-        })
+        try:
+            # Create a new chat id and add the chat to the database
+            chat_id = str(uuid.uuid4())
+            new_chat_ref = db.collection('chats').document(chat_id)
+            new_chat_ref.set({
+                'chat_id': chat_id,
+                'google_user_id': google_user_id,
+                'created_at': google_firestore.SERVER_TIMESTAMP,
+                'updated_at': google_firestore.SERVER_TIMESTAMP,
+                'model' : request.chat_model,
+            })
+            db.collection('chat_history').add({
+                'ai_message': ai_message,
+                'user_message': user_message,
+                'chat_id': chat_id,
+                'created_at': google_firestore.SERVER_TIMESTAMP,
+                'updated_at': google_firestore.SERVER_TIMESTAMP,
+                'regenerate_message' : request.regenerate_message,
+                'model' : request.chat_model
+            })
+        except Exception as e:
+            logging.error(f'Error creating new chat: {e}')
+            return None
 
-        db.collection('chat_history').add({
-            'ai_message': ai_message,
-            'user_message': user_message,
-            'chat_id': chat_id,
-            'created_at': google_firestore.SERVER_TIMESTAMP,
-            'updated_at': google_firestore.SERVER_TIMESTAMP,
-        })
-
-
+    return chat_id
 
 @app.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
@@ -351,20 +383,111 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
         generated_ai_message = ""
 
         # Run the conversation.invoke method in a separate thread
-        async def event_streaming():
+        def event_streaming():
             nonlocal generated_ai_message
             for token in conversation.stream({"chat_history": memory.buffer, "user_input": request.user_input}):
                 generated_ai_message += token
                 response = ChatEventStreaming(event="stream", data=token, is_final=False)
                 yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
             
-            response = ChatEventStreaming(event="stream", data="", is_final=True)
-            yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
 
             # Database update after streaming is completed
-            await add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message)
+            chat_id = add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message)
+
+            response = ChatEventStreaming(event="stream", data="", is_final=True, chat_id=chat_id)
+            yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
+
 
         return StreamingResponse(event_streaming(), media_type="text/event-stream")
+    except ValidationError as ve:
+        # Handle validation errors specifically for better user feedback
+        logging.error("Validation error: %s", ve)
+        raise HTTPException(status_code=400, detail="Invalid request data") from ve
+    except Exception as e:
+        # Log and handle generic exceptions gracefully
+        logging.error("Error processing chat request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+# chat history of the user
+@app.get("/v1/chat_history", tags=["AI Endpoints"], response_model=list[ChatUserHistory])
+async def user_chat_history(token_info: dict = Depends(verify_token)):
+    """Chat history endpoint for the OpenAI chatbot."""
+    try:
+        # Get the chat history from the database
+        chat_history = []
+        chat_ref = db.collection('chats').where('google_user_id', '==', token_info['sub']).stream()
+        for chat_data in chat_ref:
+            chat_data = chat_data.to_dict()
+            chat_history.append(ChatUserHistory(chat_id=chat_data['chat_id'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], chat_title=chat_data.get('chat_title', None) , chat_model=chat_data.get('model', 'gpt-3.5-turbo')))
+                    
+        return chat_history
+    except Exception as e:
+        # Log and handle generic exceptions gracefully
+        logging.error("Error processing chat history request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+def update_chat_title(chat_id, new_chat_title):
+    """
+    Background task to update the chat title in the database.
+    """
+    try:
+        chat_doc_ref = db.collection('chats').document(chat_id)
+        chat_doc_ref.update({
+            'chat_title': new_chat_title,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
+    except Exception as e:
+        logging.error(f'Error updating chat title: {e}')
+
+
+
+# title of the chat generater
+@app.post("/v1/chat_title", tags=["AI Endpoints"])
+async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_token)):
+    """Chat endpoint for the OpenAI chatbot."""
+    try:
+        # Get the chat model from the request and create the corresponding chat instance
+        chat_model = request.chat_model
+        chat = model_company_mapping.get(chat_model)
+        if chat is None:
+            raise ValueError(f"Invalid chat model: {chat_model}")
+        
+        print("Chat model: ", chat_model)
+
+        
+        # Create the chat prompt and memory for the conversation
+        chat = chat(
+            model_name=chat_model,
+            model=chat_model,
+            temperature=0,
+        )
+
+
+        prompt = ChatPromptTemplate(
+            messages=[
+                # SystemMessagePromptTemplate.from_template(""),
+                MessagesPlaceholder(variable_name="chat_history"),
+                HumanMessagePromptTemplate.from_template("{user_input}"),
+            ]
+        )
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=True)
+
+        # Seed the chat history with the user's input from the request
+        for chat_history in request.chat_history:
+            memory.chat_memory.add_user_message(chat_history.user_message)
+            memory.chat_memory.add_ai_message(chat_history.ai_message)
+
+        # Run the conversation.invoke method in a separate thread
+        response = conversation.invoke(input="Generate 5 words sentence title for the above chat. \n Note : do not show creativity")
+
+        # clean the response of extra "" or /
+        response["text"] = response["text"].replace('"', '').replace("/", "")
+
+        # Database update after streaming is completed
+        update_chat_title(request.chat_id, response["text"])
+
+        return ChatResponse(response=response["text"])
     except ValidationError as ve:
         # Handle validation errors specifically for better user feedback
         logging.error("Validation error: %s", ve)

@@ -1,0 +1,6 @@
+{
+  "watch": ["."],
+  "ext": "py",
+  "exec": "taskkill /F /IM uvicorn.exe & uvicorn app:app --port 5000",
+  "ignore": ["*.pyc", "*__pycache__*", "*.js", "*.jsx"]
+}
