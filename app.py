@@ -96,6 +96,16 @@ class ChatUserHistory(BaseModel):
     created_at: datetime.datetime
     updated_at: datetime.datetime
 
+
+class ChatByIdHistory(BaseModel):
+    """Chat by id history model for the chat by id endpoint."""
+    ai_message: str
+    user_message: str
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+    regenerate_message: bool
+    model: str
+
 model_company_mapping = {
     "gpt-3.5-turbo": ChatOpenAI,
     "gpt-4-turbo-preview": ChatOpenAI,
@@ -496,6 +506,41 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
         # Log and handle generic exceptions gracefully
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
+# chats by chat_id
+@app.get("/v1/chat_by_id", tags=["AI Endpoints"], response_model=list[ChatHistory])
+async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
+    """Chat endpoint for the OpenAI chatbot."""
+    try:
+        # verify that chat_id belongs to the user using google_user_id inside token_info['sub']
+        chat_ref = db.collection('chats').where('chat_id', '==', chat_id).stream()
+        chat_data = next(chat_ref, None)
+
+        if chat_data:
+            chat_data = chat_data.to_dict()
+            if chat_data['google_user_id'] == token_info['sub']:
+                chat_history = []
+                chat_history_ref = db.collection('chat_history').where('chat_id', '==', chat_id).stream()
+                for chat_data in chat_history_ref:
+                    chat_data = chat_data.to_dict()
+                    chat_history.append(ChatByIdHistory(ai_message=chat_data['ai_message'], user_message=chat_data['user_message'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], regenerate_message=chat_data['regenerate_message'], model=chat_data['model']))
+                return chat_history
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden",
+                )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Chat not found",
+            )
+    except Exception as e:
+        logging.error("Error processing chat request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
 
 if __name__ == "__main__":
     import uvicorn

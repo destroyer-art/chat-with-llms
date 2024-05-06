@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Chat } from './Chat';
 import { Card, CardBody } from "@nextui-org/react";
+import { Link } from 'react-router-dom';
 
 
 export const Dashboard = () => {
@@ -70,7 +71,9 @@ export const Dashboard = () => {
                     {chatHistory.map((chat, index) => (
                         <Card shadow="none" className='bg-slate-700 hover:bg-slate-600 text-sm text-white' key={index}>
                         <CardBody>
-                            <p>{chat?.chat_title}</p>
+                            <Link to={`?chat_id=${chat.chat_id}`} className='hover:text-white'>
+                                {chat?.chat_title}
+                            </Link>
                         </CardBody>
                     </Card>
                     ))}
