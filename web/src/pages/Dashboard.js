@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Chat } from './Chat';
 import { Card, CardBody } from "@nextui-org/react";
 import { Link } from 'react-router-dom';
+import chevronsLeft from '../images/chevrons-left.svg';
+import chevronsRight from '../images/chevrons-right.svg';
+import aiMind from '../images/ai-mind.svg';
 
 
 export const Dashboard = () => {
@@ -56,26 +59,31 @@ export const Dashboard = () => {
                     transform: 'translateY(-50%)'  // Center the button vertically
                 }}
             >
-                {isSidebarOpen ? <img src='chevrons-left.svg' alt='chevrons-left' className='text-gray-500 hover:text-black' /> : <img src='chevrons-right.svg' alt='chevrons-left' className='text-gray-500 hover:text-black' />}
+                {isSidebarOpen ? <img src={chevronsLeft} alt='chevrons-left' className='text-gray-500 hover:text-black' /> : <img src={chevronsRight} alt='chevrons-right' className='text-gray-500 hover:text-black' />}
             </button>
 
             {/* Sidebar with transition for sliding effect */}
             <div className={`bg-slate-700 h-full fixed z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
-                style={{ transition: 'transform 0.3s', width: '256px' }}>
+                style={{ transition: 'transform 0.3s', width: '256px', overflowY: 'auto' }}>
                 <div className="flex items-center justify-start h-16 text-white font-bold ml-2">
-                    <img src="ai-mind.svg" alt="ai-mind" className="h-10 w-10 pr-2" />
+                    <img src={aiMind} alt="ai-mind" className="h-10 w-10 pr-2" />
                     Chat With LLMs
                 </div>
 
                 <div className="grid grid-cols-1 pt-5 pl-5 pr-5 items-center justify-start">
                     {chatHistory.map((chat, index) => (
                         <Card shadow="none" className='bg-slate-700 hover:bg-slate-600 text-sm text-white' key={index}>
-                        <CardBody>
-                            <Link to={`?chat_id=${chat.chat_id}`} className='hover:text-white'>
-                                {chat?.chat_title}
-                            </Link>
-                        </CardBody>
-                    </Card>
+                            <CardBody>
+                                <Link to={{
+                                    pathname: `/chat/${chat.chat_id}`,
+                                    state: { chatId: chat.chat_id}
+                                }} className='hover:text-white'
+                                    
+                                >
+                                    {chat?.chat_title}
+                                </Link>
+                            </CardBody>
+                        </Card>
                     ))}
                 </div>
             </div>

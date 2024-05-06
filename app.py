@@ -509,7 +509,7 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
 
 
 # chats by chat_id
-@app.get("/v1/chat_by_id", tags=["AI Endpoints"], response_model=list[ChatHistory])
+@app.get("/v1/chat_by_id", tags=["AI Endpoints"], response_model=list[ChatByIdHistory])
 async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
     """Chat endpoint for the OpenAI chatbot."""
     try:
@@ -524,6 +524,7 @@ async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
                 chat_history_ref = db.collection('chat_history').where('chat_id', '==', chat_id).stream()
                 for chat_data in chat_history_ref:
                     chat_data = chat_data.to_dict()
+                    print(chat_data)
                     chat_history.append(ChatByIdHistory(ai_message=chat_data['ai_message'], user_message=chat_data['user_message'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], regenerate_message=chat_data['regenerate_message'], model=chat_data['model']))
                 return chat_history
             else:

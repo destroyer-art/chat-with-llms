@@ -8,9 +8,9 @@ import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
 import { AiOutlineReload } from 'react-icons/ai';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
-export const Chat = ({fetchUserChatHistory}) => {
+export const Chat = (props) => {
   const [messages, setMessages] = useState([]);
   const [userInput, setUserInput] = useState("");
   const [isLoading, setIsLoading] = useState(false); // New state for loading
@@ -23,6 +23,7 @@ export const Chat = ({fetchUserChatHistory}) => {
   const [profilePicture, setProfilePicture] = useState(localStorage.getItem('profilePicture'));
   const [chatId, setChatId] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -54,7 +55,7 @@ export const Chat = ({fetchUserChatHistory}) => {
     scrollToBottom();
   }, [scrollToBottom, messages]);
 
-  const handleRetry = async (regenerateMessage=false) => {
+  const handleRetry = async (regenerateMessage = false) => {
     setIsRequestFailed(false); // set the request failed state to false
     // set user input to the last user message
     setUserInput(messages[messages.length - 1].user_message);
@@ -114,10 +115,64 @@ export const Chat = ({fetchUserChatHistory}) => {
 
   useEffect(() => {
     if (chatId !== null) {
-      // Append the chatId to the URL in path parameter
-      navigate(`?chatId=${chatId}`);
+      // Append the chatId to the URL in path parameter without re-rendering the component
+      navigate(`/chat/${chatId}`, { replace: true });
     }
   }, [chatId]);
+
+  useEffect(() => {
+    const fetchChatMessageDetails = async (chatId) => {
+      try {
+        const response = await fetch(`http://localhost:5000/v1/chat_by_id?chat_id=${chatId}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // sort as per the updated_at field asc of time 
+          data.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+          setMessages(() => {
+            const newMessage = [];
+            for (let i = 0; i < data.length; i++) {
+              if (i !== 0 && data[i].regenerate_message === true)
+                newMessage.pop();
+
+              newMessage.push({
+                ai_message: data[i].ai_message,
+                user_message: data[i].user_message
+              });
+            }
+
+            return newMessage;
+          });
+          console.log(modelOptions.find((model) => model.value === data[data.length-1].model))
+          // get model from the chat message
+          setSelectedModel(modelOptions.find((model) => model.value === data[data.length-1].model));
+
+        } else {
+          console.error('Error fetching chat message details:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error fetching chat message details:', error);
+      }
+    }
+    
+    // check if path parameter is there in the url 
+    const path = window.location.pathname;
+    // get the last part of the path
+    const chatId = path.split('/').pop();
+    console.log('Chat ID:', chatId)
+    if (chatId !== 'chat') {
+      setChatId(chatId);
+      fetchChatMessageDetails(chatId);
+      setShowRetry(true);
+    }
+
+  }, [location.state, navigate]);
 
 
   const getTitle = async (userHistory, chatId) => {
@@ -140,7 +195,7 @@ export const Chat = ({fetchUserChatHistory}) => {
       });
 
       if (response.ok) {
-        await fetchUserChatHistory();
+        await props.fetchUserChatHistory();
       } else {
         console.error('Error fetching chat title:', response.statusText);
         return null;
@@ -152,7 +207,7 @@ export const Chat = ({fetchUserChatHistory}) => {
   }
 
 
-  const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage=false) => {
+  const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage = false) => {
     try {
       setIsLoading(true);
       setShowRetry(false);
@@ -163,7 +218,7 @@ export const Chat = ({fetchUserChatHistory}) => {
         "chat_model": selectedModel.value,
         "temperature": 0.8,
         "chat_id": chatId,
-        "regenerate_message" : regenerateMessage
+        "regenerate_message": regenerateMessage
       };
       setUserInput("");
 
@@ -199,9 +254,9 @@ export const Chat = ({fetchUserChatHistory}) => {
           setIsLoading(true);
 
           if (chatId === null) {
-            if(data.is_final)
+            if (data.is_final)
               setChatId(data.chat_id);
-              idChat = data.chat_id;
+            idChat = data.chat_id;
           }
 
           // update userHistory
@@ -314,43 +369,43 @@ export const Chat = ({fetchUserChatHistory}) => {
           )}
 
           <div ref={chatWindowRef} />
-          
+
         </div>
         <div className="fixed inset-x-0 bottom-0 p-4">
           <div className="flex justify-center">
-          {isRequestFailed ? (
-            <div style={{ width: '30%' }}> {/* Container to control the width */}
-              <Button
-                color="danger"
-                variant="shadow"
-                onClick={handleRetry}
-                className="w-full" // Make the button fill the container
-                startContent={<AiOutlineReload />}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : (
-            <InputBar
-              className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
-              userInput={userInput}
-              setUserInput={setUserInput}
-              endContent={
+            {isRequestFailed ? (
+              <div style={{ width: '30%' }}> {/* Container to control the width */}
                 <Button
-                  isIconOnly
-                  variant="faded"
-                  aria-label="Send"
-                  onClick={() => {
-                    onSend(userInput);
-                  }}
-                  isDisabled={isStreaming}
+                  color="danger"
+                  variant="shadow"
+                  onClick={handleRetry}
+                  className="w-full" // Make the button fill the container
+                  startContent={<AiOutlineReload />}
                 >
-                  <BsSendArrowUp />
+                  Retry
                 </Button>
-              }
-              onKeyDown={handleKeyPress}
-            />
-          )}
+              </div>
+            ) : (
+              <InputBar
+                className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
+                userInput={userInput}
+                setUserInput={setUserInput}
+                endContent={
+                  <Button
+                    isIconOnly
+                    variant="faded"
+                    aria-label="Send"
+                    onClick={() => {
+                      onSend(userInput);
+                    }}
+                    isDisabled={isStreaming}
+                  >
+                    <BsSendArrowUp />
+                  </Button>
+                }
+                onKeyDown={handleKeyPress}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import React from 'react'
 import { Button } from '@nextui-org/react';
 import { Link } from 'react-router-dom';
+import aiMind from '../images/ai-mind.svg'; 
 
 
 export const LandingPageIntro = () => {
@@ -28,7 +29,7 @@ export const LandingPageIntro = () => {
                 </div>
           </div>
           <div className='justify-center'>
-            <img src="ai-mind.svg" alt="ai-mind"   className="mx-auto overflow-hidden rounded-xl object-cover sm:size-80 size-60" />
+            <img src={aiMind} alt="ai-mind" className="mx-auto overflow-hidden rounded-xl object-cover sm:size-80 size-60" />
           </div>
       </div>
   )

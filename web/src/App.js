@@ -20,6 +20,12 @@ function App() {
               </ProtectedPage>
             }
           />
+          <Route path="/chat/:chatId" 
+          element={
+            <ProtectedPage>
+                <Dashboard />
+              </ProtectedPage>
+          } />
         </Routes>
       </Router>
     </NextUIProvider>

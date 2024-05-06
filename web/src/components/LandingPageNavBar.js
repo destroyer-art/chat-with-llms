@@ -5,6 +5,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleAuth } from '../utils/useGoogleAuth';
 import { verifyGoogleAuth } from '../utils/verifyGoogleAuth';
 import { useNavigate } from 'react-router-dom';
+import aiMind from '../images/ai-mind.svg';
 
 export const LandingPageNavBar = () => {
     const { handleGoogleSuccess, handleGoogleFailure } = useGoogleAuth();
@@ -18,7 +19,7 @@ export const LandingPageNavBar = () => {
     return (
         <div className='flex justify-between min-h-[8dvh] border-b'>
             <div className="px-4 lg:px-6 justify-start flex items-center">
-                <img src="ai-mind.svg" alt="ai-mind" className="h-10 w-10 pr-2" />
+                <img src={aiMind} alt="ai-mind" className="h-10 w-10 pr-2" />
                 <span className="text-xs sm:text-xl font-bold">chat-with-llms</span>
             </div>
             <div className='px-4 lg:px-6 justify-end flex items-center'>
