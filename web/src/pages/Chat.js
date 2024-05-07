@@ -149,7 +149,6 @@ export const Chat = (props) => {
 
             return newMessage;
           });
-          console.log(modelOptions.find((model) => model.value === data[data.length-1].model))
           // get model from the chat message
           setSelectedModel(modelOptions.find((model) => model.value === data[data.length-1].model));
 
@@ -165,7 +164,6 @@ export const Chat = (props) => {
     const path = window.location.pathname;
     // get the last part of the path
     const chatId = path.split('/').pop();
-    console.log('Chat ID:', chatId)
     if (chatId !== 'chat') {
       setChatId(chatId);
       fetchChatMessageDetails(chatId);
@@ -313,7 +311,7 @@ export const Chat = (props) => {
         <div className='px-4 lg:px-6 justify-start flex items-center w-96 fixed'>
           <Select
             className="w-52 md:w-full"
-            defaultSelectedKeys={[modelOptions[0].value]}
+            selectedKeys={[selectedModel?.value]}
             onChange={(event) => setSelectedModel(
               modelOptions.find((model) => model.value === event.target.value)
             )} // Update selected model on change

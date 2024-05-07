@@ -420,12 +420,15 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
 
 # chat history of the user
 @app.get("/v1/chat_history", tags=["AI Endpoints"], response_model=list[ChatUserHistory])
-async def user_chat_history(token_info: dict = Depends(verify_token)):
+async def user_chat_history(page: int = 1, limit: int = 10, token_info: dict = Depends(verify_token)):
     """Chat history endpoint for the OpenAI chatbot."""
     try:
-        # Get the chat history from the database
+        # Calculate the starting index based on the page and limit
+        start_index = (page - 1) * limit
+
+        # Get the chat history from the database with pagination
         chat_history = []
-        chat_ref = db.collection('chats').where('google_user_id', '==', token_info['sub']).stream()
+        chat_ref = db.collection('chats').where('google_user_id', '==', token_info['sub']).offset(start_index).limit(limit).stream()
         for chat_data in chat_ref:
             chat_data = chat_data.to_dict()
             chat_history.append(ChatUserHistory(chat_id=chat_data['chat_id'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], chat_title=chat_data.get('chat_title', None) , chat_model=chat_data.get('model', 'gpt-3.5-turbo')))
@@ -435,6 +438,8 @@ async def user_chat_history(token_info: dict = Depends(verify_token)):
         # Log and handle generic exceptions gracefully
         logging.error("Error processing chat history request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+    
+
 
 def update_chat_title(chat_id, new_chat_title):
     """
