@@ -9,6 +9,7 @@ import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
 import { AiOutlineReload } from 'react-icons/ai';
 import { useNavigate, useLocation } from 'react-router-dom';
+import DividerWithText from '../components/DividerWithText';
 
 export const Chat = (props) => {
   const [messages, setMessages] = useState([]);
@@ -24,6 +25,7 @@ export const Chat = (props) => {
   const [chatId, setChatId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  let previousModel = null;
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -45,7 +47,8 @@ export const Chat = (props) => {
     const newMessages = [...messages];
     newMessages.push({
       ai_message: "",
-      user_message: message
+      user_message: message,
+      model: selectedModel.value
     });
     setMessages(newMessages);
     await getAIResponse();
@@ -73,45 +76,6 @@ export const Chat = (props) => {
     // call the getAIResponse function to retry the last message
     await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1), regenerateMessage);
   }
-
-
-  // const getAIResponse = async () => {
-  //   try {
-  //     setIsLoading(true); // Set loading state to true
-  //     const requestData = {
-  //       "user_input": userInput,
-  //       "chat_history": messages,
-  //       "chat_model": selectedModel.value,
-  //       "temperature": 0.8
-  //     }
-
-  //     setUserInput("");
-
-  //     const response = await fetch("http://localhost:5000/v1/chat", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json"
-  //       },
-  //       body: JSON.stringify(requestData)
-  //     });
-
-  //     const data = await response.json();
-
-  //     setMessages((prevMessages) => {
-  //       const updatedMessages = [...prevMessages];
-  //       const lastIndex = updatedMessages.length - 1;
-  //       updatedMessages[lastIndex] = {
-  //         ...updatedMessages[lastIndex],
-  //         ai_message: data?.response || "",
-  //       };
-  //       return updatedMessages;
-  //     });
-  //   } catch (error) {
-  //     console.error("Error:", error);
-  //   } finally {
-  //     setIsLoading(false); // Set loading state to false
-  //   }
-  // }
 
   useEffect(() => {
     if (chatId !== null) {
@@ -143,7 +107,8 @@ export const Chat = (props) => {
 
               newMessage.push({
                 ai_message: data[i].ai_message,
-                user_message: data[i].user_message
+                user_message: data[i].user_message,
+                model: data[i].model
               });
             }
 
@@ -274,6 +239,7 @@ export const Chat = (props) => {
             updatedMessages[lastIndex] = {
               ...updatedMessages[lastIndex],
               ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+              model: selectedModel.value
             };
             return updatedMessages;
           });
@@ -335,6 +301,12 @@ export const Chat = (props) => {
         <div className="flex-1 flex flex-col gap-3 px-4 pt-16 pb-16 mb-4 chat-window overflow-y-auto relative">
           {messages.map((message, index) => (
             <React.Fragment key={index}>
+              {previousModel !== message.model && (
+                <>
+                  <DividerWithText text={previousModel = message.model} />
+                </>
+              )}
+
               {message.user_message !== "" && (
                 <div className="w-full flex justify-end">
                   <UserCard message={message.user_message} profilePicture={profilePicture} />
