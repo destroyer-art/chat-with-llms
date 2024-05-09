@@ -10,6 +10,7 @@ import { BsSendArrowUp } from "react-icons/bs";
 import { AiOutlineReload } from 'react-icons/ai';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DividerWithText from '../components/DividerWithText';
+import StartNewChatButton from '../components/StartNewChatButton';
 
 export const Chat = (props) => {
   const [messages, setMessages] = useState([]);
@@ -275,8 +276,9 @@ export const Chat = (props) => {
     <>
       <div className='flex justify-between min-h-[8dvh]'>
         <div className='px-4 lg:px-6 justify-start flex items-center w-96 fixed'>
+          <StartNewChatButton />
           <Select
-            className="w-52 md:w-full"
+            className="w-52 md:w-full ml-4"
             selectedKeys={[selectedModel?.value]}
             onChange={(event) => setSelectedModel(
               modelOptions.find((model) => model.value === event.target.value)
