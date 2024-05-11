@@ -3,7 +3,7 @@ import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import InputBar from '../components/InputBar';
 import LoadingSpinner from '../components/LoadingSpinner'; // Import the LoadingSpinner component
-import { Select, SelectItem, Button } from '@nextui-org/react';
+import { Select, SelectItem, Button, Dropdown, DropdownTrigger, Avatar, DropdownMenu, DropdownItem } from '@nextui-org/react';
 import { modelOptions } from '../options/modelOptions';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { BsSendArrowUp } from "react-icons/bs";
@@ -116,7 +116,7 @@ export const Chat = (props) => {
             return newMessage;
           });
           // get model from the chat message
-          setSelectedModel(modelOptions.find((model) => model.value === data[data.length-1].model));
+          setSelectedModel(modelOptions.find((model) => model.value === data[data.length - 1].model));
 
         } else {
           console.error('Error fetching chat message details:', response.statusText);
@@ -125,7 +125,7 @@ export const Chat = (props) => {
         console.error('Error fetching chat message details:', error);
       }
     }
-    
+
     // check if path parameter is there in the url 
     const path = window.location.pathname;
     // get the last part of the path
@@ -274,8 +274,8 @@ export const Chat = (props) => {
 
   return (
     <>
-      <div className='flex justify-between min-h-[8dvh]'>
-        <div className='px-4 lg:px-6 justify-start flex items-center w-96 fixed'>
+      <div className='flex justify-between items-center min-h-[8vh] fixed top-0 left-0 right-0 z-10'>
+        <div className='px-4 lg:px-6 flex items-center w-96'>
           <StartNewChatButton />
           <Select
             className="w-52 md:w-full ml-4"
@@ -297,7 +297,29 @@ export const Chat = (props) => {
             ))}
           </Select>
         </div>
+        <div className='px-4 lg:px-6 flex items-center'>
+          <Dropdown placement="bottom-end">
+            <DropdownTrigger>
+              <Avatar
+                isBordered
+                as="button"
+                className="transition-transform"
+                src={profilePicture}
+              />
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Profile Actions" variant="flat">
+              <DropdownItem key="settings">My Settings</DropdownItem>
+              <DropdownItem key="logout" color="danger" onClick={() => {
+                console.log('Logout');
+              }}>
+                Log Out
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </div>
       </div>
+
+
 
       <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
         <div className="flex-1 flex flex-col gap-3 px-4 pt-16 pb-16 mb-4 chat-window overflow-y-auto relative">
