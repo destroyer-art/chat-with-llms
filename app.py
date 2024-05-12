@@ -51,9 +51,23 @@ app.add_middleware(
 # Set up logging with the configured log level from environment variables or default to ERROR.
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "ERROR"))
 
+def get_environment_variable(key):
+    """Get the environment variable or return None if not found"""
+    # Try fetching from environment first
+    value = os.getenv(key)
+    if value is not None:
+        return value
+    
+    # Fallback to dotenv
+    value = dotenv.get_key(dotenv.find_dotenv(), key)
+    return value
+
 # Initialize a Firestore client with a specific service account key file
-cred = credentials.Certificate("serviceAccount.json")
-firebase_admin.initialize_app(cred)
+if get_environment_variable("ENVIRONMENT") == "dev":
+    cred = credentials.Certificate("serviceAccount.json")
+    firebase_admin.initialize_app(cred)
+else:
+    firebase_admin.initialize_app()
 
 db = firestore.client()
 
@@ -126,13 +140,14 @@ model_company_mapping = {
     "sonar-medium-online" : ChatPerplexity,
 }
 
+
 # Get the secret key from the environment variable
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = get_environment_variable("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY environment variable is not set")
 
-GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_CLIENT_SECRET")
+GOOGLE_CLIENT_ID = get_environment_variable("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = get_environment_variable("GOOGLE_CLIENT_SECRET")
 if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
     raise ValueError("GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET environment variable is not set")    
 

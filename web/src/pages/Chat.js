@@ -35,6 +35,8 @@ export const Chat = (props) => {
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
+
 
 
   const scrollToBottom = useCallback(() => {
@@ -97,7 +99,7 @@ export const Chat = (props) => {
   useEffect(() => {
     const fetchChatMessageDetails = async (chatId) => {
       try {
-        const response = await fetch(`http://localhost:5000/v1/chat_by_id?chat_id=${chatId}`, {
+        const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -158,7 +160,7 @@ export const Chat = (props) => {
         "chat_id": chatId,
       };
 
-      const response = await fetch('http://localhost:5000/v1/chat_title', {
+      const response = await fetch(`${API_HOST}/v1/chat_title`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -225,7 +227,7 @@ export const Chat = (props) => {
       let userHistory = [{ ai_message: "", user_message: userMessage }];
       let idChat = chatId;
 
-      await fetchEventSource("http://localhost:5000/v1/chat_event_streaming", {
+      await fetchEventSource(`${API_HOST}/v1/chat_event_streaming`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

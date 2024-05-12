@@ -6,10 +6,12 @@ export const ProtectedPage = ({ children }) => {
   const accessToken = localStorage.getItem('accessToken');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
+
   useEffect(() => {
     const verifyToken = async () => {
       try {
-        const response = await fetch('http://localhost:5000/verify', {
+        const response = await fetch(`${API_HOST}/verify`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },

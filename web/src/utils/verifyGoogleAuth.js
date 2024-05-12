@@ -1,11 +1,12 @@
 export const verifyGoogleAuth = async () => {
+    const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
     try {
         const accessToken = localStorage.getItem('accessToken');
         if (!accessToken) {
             console.error('No access token found');
             return false;
         }
-        const response = await fetch('http://localhost:5000/verify', {
+        const response = await fetch(`${API_HOST}/verify`, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
           },

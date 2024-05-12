@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 export const useGoogleAuth = () => {
   const navigate = useNavigate();
 
+  const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
+
   const handleGoogleSuccess = async (tokenResponse) => {
 
     const idToken = tokenResponse.access_token;
 
     try {
-      const backendResponse = await fetch('http://localhost:5000/auth/google', {
+      const backendResponse = await fetch(`${API_HOST}/auth/google`, {
         headers: {
           'Authorization': `Bearer ${idToken}`,
         },

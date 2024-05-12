@@ -14,6 +14,8 @@ export const Dashboard = () => {
     const [hasMoreChats, setHasMoreChats] = useState(true);
     const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
 
+    const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
+
 
     const toggleSidebar = () => {
         setIsSidebarOpen(!isSidebarOpen);
@@ -26,7 +28,7 @@ export const Dashboard = () => {
 
     const fetchUserChatHistory = async (page = 1) => {
         try {
-            const response = await fetch(`http://localhost:5000/v1/chat_history?page=${page}`, {
+            const response = await fetch(`${API_HOST}/v1/chat_history?page=${page}`, {
                 headers: {
                     'Authorization': `Bearer ${accessToken}`,
                 },
