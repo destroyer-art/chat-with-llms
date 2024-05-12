@@ -1,0 +1,128 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+  build-backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build the Docker image
+        run: |
+          docker build -t chat-with-llms-backend:latest .
+          
+      - name: Configure GCP Credentials
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          service_account_key: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          project_id: chat-with-llms-dcefd
+          export_default_credentials: true
+      
+      - name: Configure Docker Client
+        if: github.ref == 'refs/heads/main'
+        run: |-
+          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Push the Docker image
+        if: github.ref == 'refs/heads/main'
+        env: 
+          ARTIFACT_REGISTRY_URL: asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-backend
+        run: |
+          docker tag chat-with-llms-backend:latest $ARTIFACT_REGISTRY_URL/chat-with-llms-backend:latest
+          docker push $ARTIFACT_REGISTRY_URL/chat-with-llms-backend:latest      
+  
+  build-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Build the Docker image
+        run: |
+          docker build -t chat-with-llms-frontend:latest ./web
+          
+      - name: Configure GCP Credentials
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          service_account_key: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          project_id: chat-with-llms-dcefd
+          export_default_credentials: true
+      
+      - name: Configure Docker Client
+        if: github.ref == 'refs/heads/main'
+        run: |-
+          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Push the Docker image
+        if: github.ref == 'refs/heads/main'
+        env: 
+          ARTIFACT_REGISTRY_URL: asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-frontend
+        run: |
+          docker tag chat-with-llms-frontend:latest $ARTIFACT_REGISTRY_URL/chat-with-llms-frontend:latest
+          docker push $ARTIFACT_REGISTRY_URL/chat-with-llms-frontend:latest
+
+
+  deploy-backend:
+    needs: build-backend
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref == 'refs/heads/main'
+    steps:
+      - name: Configure GCP Credentials
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          service_account_key: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          project_id: chat-with-llms-dcefd
+          export_default_credentials: true
+          
+      # deploy to cloud run
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@main
+        with:
+          service_name: "chat-with-llms-backend"  # Replace with the name of your existing Cloud Run service
+          image: "asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-backend/chat-with-llms-backend:latest"
+          platform: "managed"
+          region: "asia-south1"
+          service: "chat-with-llms-backend"
+          port: 8080
+
+
+  deploy-frontend:
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref == 'refs/heads/main'
+    steps:
+      - name: Configure GCP Credentials
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          service_account_key: ${{ secrets.SERVICE_ACCOUNT_JSON }}
+          project_id: chat-with-llms-dcefd
+          export_default_credentials: true
+          
+      # deploy to cloud run
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@main
+        with:
+          service_name: "chat-with-llms-frontend"  # Replace with the name of your existing Cloud Run service
+          image: "asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-frontend/chat-with-llms-frontend:latest"
+          platform: "managed"
+          region: "asia-south1"
+          service: "chat-with-llms-frontend"
+          port: 3000
