@@ -11,6 +11,10 @@ import { AiOutlineReload } from 'react-icons/ai';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DividerWithText from '../components/DividerWithText';
 import StartNewChatButton from '../components/StartNewChatButton';
+import { SettingsModal } from '../components/SettingsModal';
+import { ConfirmationModal } from '../components/ConfirmationModal';
+import { useDisclosure } from "@nextui-org/react";
+
 
 export const Chat = (props) => {
   const [messages, setMessages] = useState([]);
@@ -27,6 +31,11 @@ export const Chat = (props) => {
   const navigate = useNavigate();
   const location = useLocation();
   let previousModel = null;
+  const [modal, setModal] = useState(null);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+
 
   const scrollToBottom = useCallback(() => {
     if (chatWindowRef.current) {
@@ -180,7 +189,7 @@ export const Chat = (props) => {
         "user_input": userMessage,
         "chat_history": history,
         "chat_model": selectedModel.value,
-        "temperature": 0.8,
+        "temperature": localStorage.getItem("temperature") || 0.7,
         "chat_id": chatId,
         "regenerate_message": regenerateMessage
       };
@@ -205,7 +214,7 @@ export const Chat = (props) => {
         body: JSON.stringify(requestData),
         onopen(res) {
           if (res.ok && res.status === 200) {
-            console.log("Event source connection established");
+            console.info("Event source connection established");
             setIsStreaming(true);
           } else if (res.status === 403) {
             navigate('/'); // Redirect to the login page
@@ -247,7 +256,7 @@ export const Chat = (props) => {
           scrollToBottom();
         },
         onclose() {
-          console.log("Event source connection closed");
+          console.info("Event source connection closed");
           setIsStreaming(false);
           setShowRetry(true);
           setIsLoading(false);
@@ -308,9 +317,13 @@ export const Chat = (props) => {
               />
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
-              <DropdownItem key="settings">My Settings</DropdownItem>
-              <DropdownItem key="logout" color="danger" onClick={() => {
-                console.log('Logout');
+              <DropdownItem key="settings" onPress={()=>{
+                setModal('settings');
+                onOpen();
+              }}>My Settings</DropdownItem>
+              <DropdownItem key="logout" color="danger" onPress={()=> {
+                setModal('logout');
+                onOpen();
               }}>
                 Log Out
               </DropdownItem>
@@ -319,8 +332,8 @@ export const Chat = (props) => {
         </div>
       </div>
 
-
-
+      {modal === 'settings' && <SettingsModal isOpen={isOpen} onClose={onClose} />}
+      {modal === 'logout' && <ConfirmationModal isOpen={isOpen} onClose={onClose} text="Are you sure you want to log out?" />}
       <div className="h-full flex-1 flex flex-col max-w-3xl mx-auto md:px-2 relative">
         <div className="flex-1 flex flex-col gap-3 px-4 pt-16 pb-16 mb-4 chat-window overflow-y-auto relative">
           {messages.map((message, index) => (

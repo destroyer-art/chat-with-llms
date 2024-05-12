@@ -16,7 +16,7 @@ export const ProtectedPage = ({ children }) => {
         });
 
         if (response.ok) {
-          console.log('Google authentication successful');
+          console.info('Google authentication successful');
           setIsAuthenticated(true);
           // check current route
           if (window.location.pathname === '/') {

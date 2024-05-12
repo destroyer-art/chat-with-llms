@@ -428,7 +428,7 @@ async def user_chat_history(page: int = 1, limit: int = 10, token_info: dict = D
 
         # Get the chat history from the database with pagination
         chat_history = []
-        chat_ref = db.collection('chats').where('google_user_id', '==', token_info['sub']).offset(start_index).limit(limit).stream()
+        chat_ref = db.collection('chats').where('google_user_id', '==', token_info['sub']).order_by('updated_at', direction=google_firestore.Query.DESCENDING).offset(start_index).limit(limit).stream()
         for chat_data in chat_ref:
             chat_data = chat_data.to_dict()
             chat_history.append(ChatUserHistory(chat_id=chat_data['chat_id'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], chat_title=chat_data.get('chat_title', None) , chat_model=chat_data.get('model', 'gpt-3.5-turbo')))

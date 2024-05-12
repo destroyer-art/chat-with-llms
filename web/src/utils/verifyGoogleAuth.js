@@ -12,7 +12,7 @@ export const verifyGoogleAuth = async () => {
         });
 
         if (response.ok) {
-            console.log('Google authentication successful');
+            console.info('Google authentication successful');
             return true;
         } else {
             console.error('Google authentication failed');

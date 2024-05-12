@@ -4,7 +4,6 @@ export const useGoogleAuth = () => {
   const navigate = useNavigate();
 
   const handleGoogleSuccess = async (tokenResponse) => {
-    console.log('Google authentication success:', tokenResponse)
 
     const idToken = tokenResponse.access_token;
 

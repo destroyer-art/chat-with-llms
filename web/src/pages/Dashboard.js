@@ -37,9 +37,9 @@ export const Dashboard = () => {
                 if (data.length > 0) {
                     setChatHistory(prevChats => {
                         const uniqueChats = data.filter(chat => !prevChats.some(prevChat => prevChat.chat_id === chat.chat_id));
+                        // sort by last updated_at
                         return [...prevChats, ...uniqueChats];
                     });
-                    console.log(`Data length is ${data.length} and page is ${page} and hasMoreChats is ${data.length === 10}`);
                     setHasMoreChats(data.length === 10); // Assuming the API returns 10 items per page
                 } else {
                     setHasMoreChats(false);
