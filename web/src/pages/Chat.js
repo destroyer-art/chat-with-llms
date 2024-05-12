@@ -179,29 +179,50 @@ export const Chat = (props) => {
     }
   }
 
+  const updateMessages = (userHistory, data, selectedModel) => {
+    userHistory = userHistory.map((item, index) => {
+      if (index === userHistory.length - 1) {
+        return {...item, ai_message: item.ai_message + (data?.data || "")};
+      }
+      return item;
+    });
+  
+    setMessages(prevMessages => prevMessages.map((item, index) => {
+      if (index === prevMessages.length - 1) {
+        return {...item, ai_message: item.ai_message + (data?.data || ""), model: selectedModel.value};
+      }
+      return item;
+    }));
+  }
+  
+
 
   const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage = false) => {
     try {
       setIsLoading(true);
       setShowRetry(false);
       setIsRequestFailed(false);
+
+      // Take the last 'historyLimit' history messages
+      const historyLimit = Math.min(Math.max(parseInt(localStorage.getItem("history") || 10), 10), 30);
+      localStorage.setItem("history", historyLimit); // Update the local storage with sanitized value
+
+      if (history.length > historyLimit) {
+        history = history.slice(history.length - historyLimit);
+      }
+
       const requestData = {
-        "user_input": userMessage,
-        "chat_history": history,
-        "chat_model": selectedModel.value,
-        "temperature": localStorage.getItem("temperature") || 0.7,
-        "chat_id": chatId,
-        "regenerate_message": regenerateMessage
+        user_input: userMessage,
+        chat_history: history,
+        chat_model: selectedModel.value,
+        temperature: parseFloat(localStorage.getItem("temperature") || 0.7),
+        chat_id: chatId,
+        regenerate_message: regenerateMessage
       };
-      setUserInput("");
 
-      let userHistory = [
-        {
-          ai_message: "",
-          user_message: userMessage
-        }
-      ];
+      setUserInput(""); // Reset user input
 
+      let userHistory = [{ ai_message: "", user_message: userMessage }];
       let idChat = chatId;
 
       await fetchEventSource("http://localhost:5000/v1/chat_event_streaming", {
@@ -212,47 +233,26 @@ export const Chat = (props) => {
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify(requestData),
-        onopen(res) {
-          if (res.ok && res.status === 200) {
+        onopen(response) {
+          if (response.ok) {
             console.info("Event source connection established");
             setIsStreaming(true);
-          } else if (res.status === 403) {
-            navigate('/'); // Redirect to the login page
           } else {
-            console.error("Failed to establish event source connection");
+            console.error("Failed to establish event source connection, status: ", response.status);
+            setShowRetry(true);
           }
         },
         onmessage(event) {
           const data = JSON.parse(event.data);
-          setIsLoading(true);
+          setIsLoading(false);
 
-          if (chatId === null) {
-            if (data.is_final)
-              setChatId(data.chat_id);
+          if (chatId === null && data.is_final) {
+            setChatId(data.chat_id);
             idChat = data.chat_id;
           }
 
-          // update userHistory
-          userHistory = ((prevMessages) => {
-            const updatedMessages = [...prevMessages];
-            const lastIndex = updatedMessages.length - 1;
-            updatedMessages[lastIndex] = {
-              ...updatedMessages[lastIndex],
-              ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
-            };
-            return updatedMessages;
-          })(userHistory);
-
-          setMessages((prevMessages) => {
-            const updatedMessages = [...prevMessages];
-            const lastIndex = updatedMessages.length - 1;
-            updatedMessages[lastIndex] = {
-              ...updatedMessages[lastIndex],
-              ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
-              model: selectedModel.value
-            };
-            return updatedMessages;
-          });
+          // Update messages and UI
+          updateMessages(userHistory, data, selectedModel);
           scrollToBottom();
         },
         onclose() {
@@ -265,25 +265,26 @@ export const Chat = (props) => {
           }
         },
         onerror(error) {
-          console.error("Event source connection error");
+          console.error("Event source connection error: ", error);
           setIsStreaming(false);
           setIsLoading(false);
           setShowRetry(true);
           setIsRequestFailed(true);
-          throw error;
         }
       });
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error in setting up event source:", error);
       setIsRequestFailed(true);
       setIsLoading(false);
     }
-  };
+};
+
+
 
 
   return (
     <>
-      <div className='flex justify-between items-center min-h-[8vh] fixed top-0 left-0 right-0 z-10'>
+      <div className='flex justify-between items-center min-h-[8vh] fixed top-0 left-0 right-0 z-10 bg-white'>
         <div className='px-4 lg:px-6 flex items-center w-96'>
           <StartNewChatButton />
           <Select
@@ -317,11 +318,11 @@ export const Chat = (props) => {
               />
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
-              <DropdownItem key="settings" onPress={()=>{
+              <DropdownItem key="settings" onPress={() => {
                 setModal('settings');
                 onOpen();
               }}>My Settings</DropdownItem>
-              <DropdownItem key="logout" color="danger" onPress={()=> {
+              <DropdownItem key="logout" color="danger" onPress={() => {
                 setModal('logout');
                 onOpen();
               }}>

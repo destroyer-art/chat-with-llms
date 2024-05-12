@@ -33,6 +33,7 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
+import uvicorn
 
 
 dotenv.load_dotenv()
@@ -334,7 +335,7 @@ async def chat_conversation(request: ChatRequest, token_info: dict = Depends(ver
             ]
         )
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=True)
+        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=False)
 
         # Seed the chat history with the user's input from the request
         for chat_history in request.chat_history:
@@ -395,17 +396,22 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
         # Run the conversation.invoke method in a separate thread
         def event_streaming():
             nonlocal generated_ai_message
-            for token in conversation.stream({"chat_history": memory.buffer, "user_input": request.user_input}):
-                generated_ai_message += token
-                response = ChatEventStreaming(event="stream", data=token, is_final=False)
+            try:
+                for token in conversation.stream({"chat_history": memory.buffer, "user_input": request.user_input}):
+                    generated_ai_message += token
+                    response = ChatEventStreaming(event="stream", data=token, is_final=False)
+                    yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
+                
+
+                # Database update after streaming is completed
+                chat_id = add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message)
+
+                response = ChatEventStreaming(event="stream", data="", is_final=True, chat_id=chat_id)
                 yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
-            
-
-            # Database update after streaming is completed
-            chat_id = add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message)
-
-            response = ChatEventStreaming(event="stream", data="", is_final=True, chat_id=chat_id)
-            yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
+            except uvicorn.protocols.utils.ClientDisconnected:
+                logging.info("Client disconnected.")
+                response = ChatEventStreaming(event="stream", data="", is_final=True)
+                yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
 
 
         return StreamingResponse(event_streaming(), media_type="text/event-stream")
@@ -486,7 +492,7 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
             ]
         )
         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=True)
+        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=False)
 
         # Seed the chat history with the user's input from the request
         for chat_history in request.chat_history:
@@ -529,7 +535,6 @@ async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
                 chat_history_ref = db.collection('chat_history').where('chat_id', '==', chat_id).stream()
                 for chat_data in chat_history_ref:
                     chat_data = chat_data.to_dict()
-                    print(chat_data)
                     chat_history.append(ChatByIdHistory(ai_message=chat_data['ai_message'], user_message=chat_data['user_message'], created_at=chat_data['created_at'], updated_at=chat_data['updated_at'], regenerate_message=chat_data['regenerate_message'], model=chat_data['model']))
                 return chat_history
             else:
