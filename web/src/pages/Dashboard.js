@@ -22,8 +22,8 @@ export const Dashboard = () => {
     };
 
     const limitSentence = (sentence) => {
-        const words = sentence.split(' ');
-        return words.length > 5 ? words.slice(0, 5).join(' ') + '...' : sentence;
+        const words = sentence?.split(' ');
+        return words?.length > 5 ? words?.slice(0, 5).join(' ') + '...' : sentence;
     }
 
     const fetchUserChatHistory = async (page = 1) => {
@@ -93,7 +93,7 @@ export const Dashboard = () => {
                                         pathname: `/chat/${chat.chat_id}`,
                                         state: { chatId: chat.chat_id }
                                     }} className='hover:text-white'>
-                                        {limitSentence(chat?.chat_title)}
+                                        {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : null}
                                     </Link>
                                 </CardBody>
                             </Card>
