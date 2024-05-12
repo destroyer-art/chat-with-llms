@@ -1,4 +1,4 @@
-version: '4'
+version: '3.8'  
 
 services:
   chat-with-llms-backend:
@@ -10,9 +10,13 @@ services:
   chat-with-llms-frontend:
     build:
       context: ./web
+      args:
+        REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID}
+        REACT_APP_API_HOST: ${REACT_APP_API_HOST}
     ports:
       - "3000:3000"
     depends_on:
       - chat-with-llms-backend
     environment:
-      - REACT_APP_API_HOST=http://localhost:8080
+      REACT_APP_GOOGLE_CLIENT_ID: ${REACT_APP_GOOGLE_CLIENT_ID}
+      REACT_APP_API_HOST: ${REACT_APP_API_HOST}

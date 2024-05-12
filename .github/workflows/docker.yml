@@ -56,7 +56,9 @@ jobs:
 
       - name: Build the Docker image
         run: |
-          docker build -t chat-with-llms-frontend:latest ./web
+          docker build -t chat-with-llms-frontend:latest ./web \
+            --build-arg REACT_APP_GOOGLE_CLIENT_ID=${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }} \
+            --build-arg REACT_APP_API_HOST=${{ secrets.REACT_APP_API_HOST }}
           
       - name: Configure GCP Credentials
         if: github.ref == 'refs/heads/main'
