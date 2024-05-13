@@ -179,7 +179,7 @@ export const Chat = (props) => {
       console.error('Error fetching chat title:', error);
       return null;
     }
-  }  
+  }
 
 
   const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage = false) => {
@@ -282,20 +282,25 @@ export const Chat = (props) => {
       setIsRequestFailed(true);
       setIsLoading(false);
     }
-};
+  };
 
 
   return (
     <>
-      <div className='flex justify-between items-center min-h-[8vh] fixed top-0 left-0 right-0 z-10 bg-white'>
-        <div className='px-4 lg:px-6 flex items-center w-96'>
+      <div
+        className={`flex justify-between items-center min-h-[8vh] sticky top-0 left-0 right-0 z-10 bg-white ${props.isSidebarOpen ? "ml-80" : "ml-20"} transition-all duration-500`}
+        style={{
+          transition: 'margin-left 0.3s ease-in-out',
+          marginLeft: props.isSidebarOpen ? '320px' : '80px'  // Adjust these values based on your actual requirements
+        }}
+      >        <div className='px-4 lg:px-6 flex items-center w-96'>
           <StartNewChatButton />
           <Select
             className="w-52 md:w-full ml-4"
             selectedKeys={[selectedModel?.value]}
             onChange={(event) => setSelectedModel(
               modelOptions.find((model) => model.value === event.target.value)
-            )} // Update selected model on change
+            )}
             label="Select model"
             startContent={selectedModel?.companyLogo}
           >
@@ -321,20 +326,17 @@ export const Chat = (props) => {
               />
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
-              <DropdownItem key="settings" onPress={() => {
-                setModal('settings');
-                onOpen();
-              }}>My Settings</DropdownItem>
-              <DropdownItem key="logout" color="danger" onPress={() => {
-                setModal('logout');
-                onOpen();
-              }}>
+              <DropdownItem key="settings" onPress={() => setModal('settings')}>
+                My Settings
+              </DropdownItem>
+              <DropdownItem key="logout" color="danger" onPress={() => setModal('logout')}>
                 Log Out
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
         </div>
       </div>
+
 
       {modal === 'settings' && <SettingsModal isOpen={isOpen} onClose={onClose} />}
       {modal === 'logout' && <ConfirmationModal isOpen={isOpen} onClose={onClose} text="Are you sure you want to log out?" />}

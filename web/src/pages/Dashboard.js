@@ -1,58 +1,63 @@
-import React, { useEffect, useState } from 'react';
-import { Chat } from './Chat';
-import { Card, CardBody } from "@nextui-org/react";
-import { Link } from 'react-router-dom';
-import chevronsLeft from '../images/chevrons-left.svg';
-import chevronsRight from '../images/chevrons-right.svg';
-import aiMind from '../images/ai-mind.svg';
-import InfiniteScroll from 'react-infinite-scroll-component';
-import { Spinner } from '@nextui-org/react';
+import React, { useEffect, useState } from "react";
+import { Chat } from "./Chat";
+import { Link } from "react-router-dom";
+import aiMind from "../images/ai-mind.svg";
+import { Spinner } from "@nextui-org/react";
+import { HiMenuAlt3 } from "react-icons/hi";
 
 export const Dashboard = () => {
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [chatHistory, setChatHistory] = useState([]);
     const [hasMoreChats, setHasMoreChats] = useState(true);
-    const [accessToken, setAccessToken] = useState(localStorage.getItem('accessToken'));
+    const [accessToken, setAccessToken] = useState(
+        localStorage.getItem("accessToken")
+    );
+    const [isLoading, setIsLoading] = useState(false);
 
-    const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
-
-
-    const toggleSidebar = () => {
-        setIsSidebarOpen(!isSidebarOpen);
-    };
+    const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
 
     const limitSentence = (sentence) => {
-        const words = sentence?.split(' ');
-        return words?.length > 5 ? words?.slice(0, 5).join(' ') + '...' : sentence;
-    }
+        // limit chat title to 30 characters
+        if (sentence.length > 30) {
+            return sentence.substring(0, 30) + "...";
+        }
+    };
 
     const fetchUserChatHistory = async (page = 1) => {
         try {
+            setIsLoading(true);
             const response = await fetch(`${API_HOST}/v1/chat_history?page=${page}`, {
                 headers: {
-                    'Authorization': `Bearer ${accessToken}`,
+                    Authorization: `Bearer ${accessToken}`,
                 },
             });
 
             if (response.ok) {
                 const data = await response.json();
                 if (data.length > 0) {
-                    setChatHistory(prevChats => {
-                        const uniqueChats = data.filter(chat => !prevChats.some(prevChat => prevChat.chat_id === chat.chat_id));
+                    setChatHistory((prevChats) => {
+                        const uniqueChats = data.filter(
+                            (chat) =>
+                                !prevChats.some((prevChat) => prevChat.chat_id === chat.chat_id)
+                        );
                         // sort by last updated_at
                         return [...prevChats, ...uniqueChats];
                     });
                     setHasMoreChats(data.length === 10); // Assuming the API returns 10 items per page
+                    setIsLoading(false);
                 } else {
                     setHasMoreChats(false);
+                    setIsLoading(false);
                 }
             } else {
-                console.error('Error fetching chat history:', response.statusText);
+                console.error("Error fetching chat history:", response.statusText);
                 setHasMoreChats(false);
+                setIsLoading(false);
             }
         } catch (error) {
-            console.error('Error fetching chat history:', error);
+            console.error("Error fetching chat history:", error);
             setHasMoreChats(false);
+            setIsLoading(false);
         }
     };
 
@@ -62,49 +67,62 @@ export const Dashboard = () => {
         }
     }, []);
 
-
     return (
-        <div className="flex min-h-screen">
-            <button className="p-2 fixed z-30" onClick={toggleSidebar} style={{ transition: 'all 0.3s', top: '50%', left: isSidebarOpen ? '256px' : '0', transform: 'translateY(-50%)' }}>
-                {isSidebarOpen ? <img src={chevronsLeft} alt='chevrons-left' className='text-gray-500 hover:text-black' /> : <img src={chevronsRight} alt='chevrons-right' className='text-gray-500 hover:text-black' />}
-            </button>
+        <>
+            <section className="flex gap-6">
+                <div className={`bg-[#0e0e0e] ${isSidebarOpen ? "w-72" : "w-16"} duration-500 text-gray-100 px-4 fixed h-screen overflow-y-auto`}>
+                    {/* Top Heading */}
+                    <div className="flex items-center justify-between mb-4 py-3">
+                        {isSidebarOpen && (
+                            <div className="flex items-center">
+                                <img src={aiMind} alt="ai-mind" className="h-10 w-10 pr-2" />
+                                <h1 className="text-xl font-bold">Chat With LLMs</h1>
+                            </div>
+                        )}
 
-            <div id="scrollableDiv" className={`bg-slate-700 h-full fixed z-20 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{ transition: 'transform 0.3s', width: '256px', overflowY: 'auto' }}>
-                <div className="flex items-center justify-start h-16 text-white font-bold ml-2">
-                    <img src={aiMind} alt="ai-mind" className="h-10 w-10 pr-2" />
-                    Chat With LLMs
+                        <HiMenuAlt3
+                            size={26}
+                            className="cursor-pointer"
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        />
+                    </div>
+
+                    {/* Chat List */}
+                    <div className="mt-4 flex flex-col gap-4 relative">
+                        {chatHistory.map((chat, index) => (
+                            <Link
+                                key={chat.chat_id}
+                                to={{
+                                    pathname: `/chat/${chat.chat_id}`,
+                                    state: { chatId: chat.chat_id }
+                                }}
+                                className="group flex items-center text-sm gap-3.5 font-medium p-2 hover:bg-gray-800 rounded-md"
+                            >
+                                <h2
+                                    style={{ transitionDelay: `${index + 3}00ms` }}
+                                    className={`whitespace-pre duration-500 ${!isSidebarOpen && "opacity-0 translate-x-28 overflow-hidden"}`}
+                                >
+                                    {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : null}
+                                </h2>
+                            </Link>
+                        ))}
+
+                        {hasMoreChats && isSidebarOpen && (
+                            <button
+                                onClick={() => fetchUserChatHistory((chatHistory.length / 10) + 1)}
+                                className="mt-2 mb-4 bg-gray-800 text-white py-2 px-4 hover:bg-gray-700 rounded-xl">
+                                {isLoading ? <Spinner /> : "Load More"}
+                            </button>
+                        )}
+                    </div>
                 </div>
 
-                <InfiniteScroll
-                    dataLength={chatHistory.length}
-                    next={() => fetchUserChatHistory((chatHistory.length / 10) + 1)}
-                    hasMore={hasMoreChats}
-                    loader={<div className="flex justify-center items-center"><Spinner color="secondary" /></div>}
-                    endMessage={<p className="text-center">
-                        <b>You have seen all chats</b>
-                    </p>}
-                    scrollableTarget="scrollableDiv"
-                >
-                    <div  className="grid grid-cols-1 pt-5 pl-5 pr-5 items-center justify-start">
-                        {chatHistory.map((chat, index) => (
-                            <Card shadow="none" className='bg-slate-700 hover:bg-slate-600 text-sm text-white' key={index}>
-                                <CardBody>
-                                    <Link to={{
-                                        pathname: `/chat/${chat.chat_id}`,
-                                        state: { chatId: chat.chat_id }
-                                    }} className='hover:text-white'>
-                                        {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : null}
-                                    </Link>
-                                </CardBody>
-                            </Card>
-                        ))}
-                    </div>
-                </InfiniteScroll>
-            </div>
+                {/* Main Chat Area */}
+                <div className={`flex-1 transition-margin duration-500`}>
+                    <Chat fetchUserChatHistory={fetchUserChatHistory} isSidebarOpen={isSidebarOpen} />
+                </div>
+            </section>
 
-            <div className={`flex-1 ${isSidebarOpen ? 'ml-64' : 'ml-4'}`}>
-                <Chat fetchUserChatHistory={fetchUserChatHistory} />
-            </div>
-        </div>
+        </>
     );
-}
+};
