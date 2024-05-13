@@ -326,10 +326,16 @@ export const Chat = (props) => {
               />
             </DropdownTrigger>
             <DropdownMenu aria-label="Profile Actions" variant="flat">
-              <DropdownItem key="settings" onPress={() => setModal('settings')}>
+              <DropdownItem key="settings" onPress={() => {
+                setModal('settings');
+                onOpen();
+              }}>
                 My Settings
               </DropdownItem>
-              <DropdownItem key="logout" color="danger" onPress={() => setModal('logout')}>
+              <DropdownItem key="logout" color="danger" onPress={() => {
+                setModal('logout');
+                onOpen();
+              }}>
                 Log Out
               </DropdownItem>
             </DropdownMenu>
