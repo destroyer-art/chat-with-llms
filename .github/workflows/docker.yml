@@ -4,13 +4,19 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**'
   pull_request:
     branches:
       - main
+    paths:
+      - '**'
       
 jobs:
   build-backend:
     runs-on: ubuntu-latest
+    paths-ignore:
+      - 'web/**'
 
     steps:
       - name: Checkout code
@@ -46,6 +52,8 @@ jobs:
   
   build-frontend:
     runs-on: ubuntu-latest
+    paths:
+      - 'web/**'
 
     steps:
       - name: Checkout code
@@ -86,6 +94,8 @@ jobs:
     needs: build-backend
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref == 'refs/heads/main'
+    paths-ignore:
+      - 'web/**'
     steps:
       - name: Configure GCP Credentials
         uses: google-github-actions/setup-gcloud@v0
@@ -110,6 +120,8 @@ jobs:
     needs: build-frontend
     runs-on: ubuntu-latest
     if: (github.event_name == 'push' || github.event_name == 'pull_request') && github.ref == 'refs/heads/main'
+    paths:
+      - 'web/**'
     steps:
       - name: Configure GCP Credentials
         uses: google-github-actions/setup-gcloud@v0

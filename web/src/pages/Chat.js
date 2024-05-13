@@ -179,24 +179,7 @@ export const Chat = (props) => {
       console.error('Error fetching chat title:', error);
       return null;
     }
-  }
-
-  const updateMessages = (userHistory, data, selectedModel) => {
-    userHistory = userHistory.map((item, index) => {
-      if (index === userHistory.length - 1) {
-        return {...item, ai_message: item.ai_message + (data?.data || "")};
-      }
-      return item;
-    });
-  
-    setMessages(prevMessages => prevMessages.map((item, index) => {
-      if (index === prevMessages.length - 1) {
-        return {...item, ai_message: item.ai_message + (data?.data || ""), model: selectedModel.value};
-      }
-      return item;
-    }));
-  }
-  
+  }  
 
 
   const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage = false) => {
@@ -254,7 +237,27 @@ export const Chat = (props) => {
           }
 
           // Update messages and UI
-          updateMessages(userHistory, data, selectedModel);
+          // update userHistory
+          userHistory = ((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastIndex = updatedMessages.length - 1;
+            updatedMessages[lastIndex] = {
+              ...updatedMessages[lastIndex],
+              ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+            };
+            return updatedMessages;
+          })(userHistory);
+
+          setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastIndex = updatedMessages.length - 1;
+            updatedMessages[lastIndex] = {
+              ...updatedMessages[lastIndex],
+              ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+              model: selectedModel.value
+            };
+            return updatedMessages;
+          });
           scrollToBottom();
         },
         onclose() {
@@ -280,8 +283,6 @@ export const Chat = (props) => {
       setIsLoading(false);
     }
 };
-
-
 
 
   return (
