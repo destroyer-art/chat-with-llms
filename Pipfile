@@ -7,9 +7,7 @@ name = "pypi"
 langchain-core = "*"
 langchain-openai = "*"
 python-dotenv = "*"
-langchain = "*"
 langchain-community = "*"
-langchain-mistralai = "*"
 tiktoken = "*"
 langchain-google-genai = "*"
 langchain-anthropic = "*"
@@ -22,6 +20,8 @@ google-auth = "*"
 google-cloud-firestore = "*"
 firebase-admin = "*"
 google-auth-oauthlib = "*"
+langchain-mistralai = "==0.0.5"
+langchain = "==0.1.16"
 
 [dev-packages]
 
