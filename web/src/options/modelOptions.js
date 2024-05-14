@@ -8,6 +8,7 @@ export const modelOptions = [
     { label: "GPT-3.5 Turbo", value: "gpt-3.5-turbo", companyLogo: <RiOpenaiFill /> },
     { label: "GPT-4", value: "gpt-4", companyLogo: <RiOpenaiFill /> },
     { label: "GPT-4 Turbo Preview", value: "gpt-4-turbo-preview", companyLogo: <RiOpenaiFill /> },
+    { label: "GPT-4 o" , value: "gpt-4o", companyLogo: <RiOpenaiFill /> },
     { label: "Claude 3 Haiku", value: "claude-3-haiku-20240307", companyLogo: <img src={anthropic} alt="" width={20} height={20} /> },
     { label: "Claude 3 Sonnet", value: "claude-3-sonnet-20240229", companyLogo: <img src={anthropic} alt="" width={20} height={20} /> },
     { label: "Claude 3 Opus", value: "claude-3-opus-20240229", companyLogo: <img src={anthropic} alt="" width={20} height={20} /> },
