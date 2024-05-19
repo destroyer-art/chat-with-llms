@@ -22,6 +22,7 @@ firebase-admin = "*"
 google-auth-oauthlib = "*"
 langchain-mistralai = "==0.0.5"
 langchain = "==0.1.16"
+langchain-together = "*"
 
 [dev-packages]
 

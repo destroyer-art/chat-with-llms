@@ -28,6 +28,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_mistralai import ChatMistralAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.chat_models import ChatPerplexity
+from langchain_together import ChatTogether
 from langchain_core.output_parsers import StrOutputParser
 import firebase_admin
 from firebase_admin import credentials
@@ -134,11 +135,21 @@ model_company_mapping = {
     "mistral-small-2402": ChatMistralAI,
     "mistral-medium-2312": ChatMistralAI,
     "mistral-large-2402": ChatMistralAI,
-    "gemini-pro": ChatGoogleGenerativeAI,
+    "gemini-1.0-pro": ChatGoogleGenerativeAI,
+    "gemini-1.5-flash-latest": ChatGoogleGenerativeAI,
+    "gemini-1.5-pro-latest": ChatGoogleGenerativeAI,
     "sonar-small-chat": ChatPerplexity,
     "sonar-small-online": ChatPerplexity,
     "sonar-medium-chat" : ChatPerplexity,
     "sonar-medium-online" : ChatPerplexity,
+    "codellama/CodeLlama-34b-Instruct-hf": ChatTogether,
+    "codellama/CodeLlama-70b-Instruct-hf": ChatTogether,
+    "meta-llama/Llama-2-13b-chat-hf": ChatTogether,
+    "meta-llama/Llama-2-70b-chat-hf": ChatTogether,
+    "meta-llama/Llama-3-8b-chat-hf" : ChatTogether,
+    "meta-llama/Llama-3-70b-chat-hf": ChatTogether,
+    "google/gemma-2b-it": ChatTogether,
+    "google/gemma-7b-it": ChatTogether,
 }
 
 
