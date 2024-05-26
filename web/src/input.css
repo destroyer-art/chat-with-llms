@@ -1,3 +1,22 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Styling the scrollbar track (part the thumb moves within) */
+.scroll-container::-webkit-scrollbar-track {
+    background-color: transparent; /* Makes the track invisible */
+    border-radius: 10px; /* Rounded corners for the track */
+  }
+  
+  /* Styling the scrollbar thumb (the part that you drag) */
+  .scroll-container::-webkit-scrollbar-thumb {
+    background-color: #555; /* Dark grey thumb */
+    border-radius: 10px; /* Rounded corners for the thumb */
+    
+  }
+  
+  /* Optional: style the scrollbar width */
+  .scroll-container::-webkit-scrollbar {
+    width: 8px; /* Width of the scrollbar */
+  }
+  
