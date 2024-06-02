@@ -20,8 +20,10 @@ export const useGoogleAuth = () => {
         const data = await backendResponse.json();
         let accessToken = data.accessToken;
         let profilePicture = data.user.picture;
+        let username = data.user.name;
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('profilePicture', profilePicture);
+        localStorage.setItem('username', username);
         navigate('/chat');
       } else {
         console.error('Google authentication failed');

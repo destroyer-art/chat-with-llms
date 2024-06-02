@@ -2,21 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Styling the scrollbar track (part the thumb moves within) */
+/* Base scrollbar styles */
+.scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+/* Hide scrollbar by default */
 .scroll-container::-webkit-scrollbar-track {
-    background-color: transparent; /* Makes the track invisible */
-    border-radius: 10px; /* Rounded corners for the track */
-  }
-  
-  /* Styling the scrollbar thumb (the part that you drag) */
-  .scroll-container::-webkit-scrollbar-thumb {
-    background-color: #555; /* Dark grey thumb */
-    border-radius: 10px; /* Rounded corners for the thumb */
-    
-  }
-  
-  /* Optional: style the scrollbar width */
-  .scroll-container::-webkit-scrollbar {
-    width: 8px; /* Width of the scrollbar */
-  }
+  background-color: transparent; 
+  border-radius: 10px;
+}
+
+/* Hide scrollbar thumb by default */
+.scroll-container::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 10px;
+  transition: background-color 0.3s ease; /* Add transition for smooth effect */
+}
+
+/* Show scrollbar on hover or focus */
+.scroll-container:hover::-webkit-scrollbar-thumb,
+.scroll-container:focus::-webkit-scrollbar-thumb {
+  background-color: #555;
+}
   
