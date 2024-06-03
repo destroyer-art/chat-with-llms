@@ -9,6 +9,10 @@ import { ConfirmationModal } from '../components/ConfirmationModal';
 import { IoSettingsOutline } from "react-icons/io5";
 import { AiOutlineLogout } from "react-icons/ai";
 import { modelOptions } from '../options/modelOptions';
+import { BsSendArrowUp } from "react-icons/bs";
+import InputBar from "../components/InputBar";
+import { UserCard } from '../components/UserCard';
+import { AiCard } from '../components/AiCard';
 
 
 export const DashboardV2 = () => {
@@ -154,7 +158,7 @@ export const DashboardV2 = () => {
             <div className={`${isSidebarOpen ? 'col-span-10' : 'col-span-12'} bg-white p-4 flex`}>
                 <div className="grid grid-rows-12 w-full">
                     {/* Navbar */}
-                    <div className="flex items-center sticky">
+                    <div className="flex items-center sticky top-0">
                         <div className="w-16">
                             {!isSidebarOpen && <button
                                 className={`w-10 h-10 rounded-full  ${isSidebarOpen ? 'text-white hover:bg-[#212121]' : 'text-black hover:bg-[#efebeb]'} flex justify-center items-center`}
@@ -221,11 +225,45 @@ export const DashboardV2 = () => {
                         </div>
                     </div>
 
-                    <div className="bg-green-500 row-span-9">
-                        Middle
+                    <div className="row-span-9 flex justify-center px-4 overflow-y-auto scroll-container" style={{
+                        height: "calc(80vh - 61px)"
+                    }}>
+                        <div className="w-full max-w-4xl py-2 flex flex-col gap-3 px-4">
+                            <div className="w-full flex justify-end">
+                                <UserCard message={"How to make profit?"} profilePicture={localStorage.getItem("profilePicture")} />
+                            </div>
+                            <div className="w-full flex justify-start">
+                                <AiCard message={"There are many ways to make a profit, but here are some common strategies:Start a business: One of the most common ways to make a profit is to start your own business. This could be anything from selling products or services to starting a consulting firm or freelance business.Invest in stocks or real estate: Another way to make a profit is to invest in stocks or real estate. By buying low and selling high, you can make a profit on your investments. Offer a service: If you have a skill or talent, you can offer your services to others for a fee. This could be anything from tutoring or coaching to graphic design or writing. Sell products online: With the rise of e-commerce, it's easier than ever to sell products online. You can start your own online store or sell products through platforms like Etsy or Amazon. Rent out property: If you own property, you can make a profit by renting it out to tenants. This could be a residential property, commercial property, or even a vacation rental. Monetize your hobbies: If you have a hobby or passion, you can often find ways to monetize it. This could be through selling handmade crafts, teaching classes, or creating content online. Ultimately, the key to making a profit is to find a way to provide value to others and monetize that value. It may take time and effort to build a profitable business or investment portfolio, but with persistence and hard work, it is possible to make a profit in various ways."} profilePicture={localStorage.getItem("profilePicture")} />
+                            </div>
+                            <div className="w-full flex justify-end">
+                                <UserCard message={"How to make profit?"} profilePicture={localStorage.getItem("profilePicture")} />
+                            </div>
+                            <div className="w-full flex justify-start">
+                                <AiCard message={"There are many ways to make a profit, but here are some common strategies:Start a business: One of the most common ways to make a profit is to start your own business. This could be anything from selling products or services to starting a consulting firm or freelance business.Invest in stocks or real estate: Another way to make a profit is to invest in stocks or real estate. By buying low and selling high, you can make a profit on your investments. Offer a service: If you have a skill or talent, you can offer your services to others for a fee. This could be anything from tutoring or coaching to graphic design or writing. Sell products online: With the rise of e-commerce, it's easier than ever to sell products online. You can start your own online store or sell products through platforms like Etsy or Amazon. Rent out property: If you own property, you can make a profit by renting it out to tenants. This could be a residential property, commercial property, or even a vacation rental. Monetize your hobbies: If you have a hobby or passion, you can often find ways to monetize it. This could be through selling handmade crafts, teaching classes, or creating content online. Ultimately, the key to making a profit is to find a way to provide value to others and monetize that value. It may take time and effort to build a profitable business or investment portfolio, but with persistence and hard work, it is possible to make a profit in various ways."} profilePicture={localStorage.getItem("profilePicture")} />
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-blue-500 row-span-2">
-                        Bottom
+
+                    <div className="row-span-2 justify-center items-center flex px-4 sticky bottom-0">
+                        <InputBar
+                            className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
+                            // userInput={userInput}
+                            // setUserInput={setUserInput}
+                            endContent={
+                                <Button
+                                    isIconOnly
+                                    variant="faded"
+                                    aria-label="Send"
+                                    onClick={() => {
+                                        // onSend(userInput);
+                                    }}
+                                // isDisabled={isStreaming}
+                                >
+                                    <BsSendArrowUp />
+                                </Button>
+                            }
+                        // onKeyDown={handleKeyPress}
+                        />
                     </div>
                 </div>
 
