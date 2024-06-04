@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { LuPlus } from "react-icons/lu";
+import { Link, useParams } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
 import { MdExpandMore } from "react-icons/md";
 import { useDisclosure } from "@nextui-org/react";
@@ -18,6 +19,7 @@ import { AiCard } from '../components/AiCard';
 export const DashboardV2 = () => {
 
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
+    const { chatId } = useParams(); 
 
     const [chatHistory, setChatHistory] = useState([]);
     const [hasMoreChats, setHasMoreChats] = useState(true);
@@ -26,6 +28,7 @@ export const DashboardV2 = () => {
     const [modal, setModal] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
+    const [messages, setMessages] = useState([]);
 
     const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -77,6 +80,52 @@ export const DashboardV2 = () => {
         }
     }, []);
 
+    useEffect(() => {
+        const fetchChatMessageDetails = async (chatId) => {
+            try {
+              const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatId}`, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`,
+                },
+              });
+      
+              if (response.ok) {
+                const data = await response.json();
+                // sort as per the updated_at field asc of time 
+                data.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+                setMessages(() => {
+                  const newMessage = [];
+                  for (let i = 0; i < data.length; i++) {
+                    if (i !== 0 && data[i].regenerate_message === true)
+                      newMessage.pop();
+      
+                    newMessage.push({
+                      ai_message: data[i].ai_message,
+                      user_message: data[i].user_message,
+                      model: data[i].model
+                    });
+                  }
+      
+                  return newMessage;
+                });
+                // get model from the chat message
+                setSelectedModel(modelOptions.find((model) => model.value === data[data.length - 1].model));
+      
+              } else {
+                console.error('Error fetching chat message details:', response.statusText);
+              }
+            } catch (error) {
+              console.error('Error fetching chat message details:', error);
+            }
+        }
+        
+        if (chatId) {
+            fetchChatMessageDetails(chatId);
+        }
+    }, [chatId]);
+
 
     return (
         <div className="grid grid-cols-12 h-screen">
@@ -103,9 +152,14 @@ export const DashboardV2 = () => {
                     </div>}
                     <div className="h-96 overflow-y-auto scroll-container">
                         {chatHistory.map((chat, index) => (
-                            <div key={index} className="p-2 hover:bg-[#212121] hover:rounded-lg cursor-pointer font-light">
-                                {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : "Untitled Chat"}
-                            </div>
+                            <Link
+                                to={`/chatv2/${chat.chat_id}`}
+                                key={chat.chat_id}
+                            >
+                                <div key={index} className="p-2 hover:bg-[#212121] hover:rounded-lg cursor-pointer font-light">
+                                    {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : "Untitled Chat"}
+                                </div>
+                            </Link>
                         ))}
                     </div>
                 </div>
