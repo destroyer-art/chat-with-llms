@@ -9,7 +9,11 @@ module.exports = {
     "./src/**/*.{html,js}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      backgroundImage: {
+        'google-gradient': 'linear-gradient(90deg, #EA4335, #FBBC05, #34A853, #4285F4)',
+      },
+    }
   },
   darkMode: "class",
   plugins: [nextui()],

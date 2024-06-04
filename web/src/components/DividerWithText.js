@@ -1,10 +1,10 @@
 import React from 'react';
 
-const DividerWithText = ({text}) => {
+const DividerWithText = ({text, color}) => {
   return (
     <div className="flex items-center justify-center">
       <div className="border-t border-gray-300 flex-grow mr-3"></div>
-      <span className="text-gray-600">{text}</span>
+      <span className={`${color}`}>{text}</span>
       <div className="border-t border-gray-300 flex-grow ml-3"></div>
     </div>
   );

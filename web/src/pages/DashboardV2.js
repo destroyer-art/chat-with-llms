@@ -14,12 +14,13 @@ import { BsSendArrowUp } from "react-icons/bs";
 import InputBar from "../components/InputBar";
 import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
-
+import DividerWithText from '../components/DividerWithText';
+import loading from '../images/loading.webp';
 
 export const DashboardV2 = () => {
 
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
-    const { chatId } = useParams(); 
+    const { chatId } = useParams();
 
     const [chatHistory, setChatHistory] = useState([]);
     const [hasMoreChats, setHasMoreChats] = useState(true);
@@ -29,6 +30,9 @@ export const DashboardV2 = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
     const [messages, setMessages] = useState([]);
+    let previousModel = null;
+    let profilePicture = localStorage.getItem("profilePicture");
+    const [messageByIdLoading, setMessageByIdLoading] = useState(false);
 
     const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -83,44 +87,47 @@ export const DashboardV2 = () => {
     useEffect(() => {
         const fetchChatMessageDetails = async (chatId) => {
             try {
-              const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatId}`, {
-                method: 'GET',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${accessToken}`,
-                },
-              });
-      
-              if (response.ok) {
-                const data = await response.json();
-                // sort as per the updated_at field asc of time 
-                data.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
-                setMessages(() => {
-                  const newMessage = [];
-                  for (let i = 0; i < data.length; i++) {
-                    if (i !== 0 && data[i].regenerate_message === true)
-                      newMessage.pop();
-      
-                    newMessage.push({
-                      ai_message: data[i].ai_message,
-                      user_message: data[i].user_message,
-                      model: data[i].model
-                    });
-                  }
-      
-                  return newMessage;
+                setMessageByIdLoading(true);
+                const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${accessToken}`,
+                    },
                 });
-                // get model from the chat message
-                setSelectedModel(modelOptions.find((model) => model.value === data[data.length - 1].model));
-      
-              } else {
-                console.error('Error fetching chat message details:', response.statusText);
-              }
+
+                if (response.ok) {
+                    const data = await response.json();
+                    // sort as per the updated_at field asc of time 
+                    data.sort((a, b) => new Date(a.updated_at) - new Date(b.updated_at));
+                    setMessages(() => {
+                        const newMessage = [];
+                        for (let i = 0; i < data.length; i++) {
+                            if (i !== 0 && data[i].regenerate_message === true)
+                                newMessage.pop();
+
+                            newMessage.push({
+                                ai_message: data[i].ai_message,
+                                user_message: data[i].user_message,
+                                model: data[i].model
+                            });
+                        }
+
+                        return newMessage;
+                    });
+                    // get model from the chat message
+                    setSelectedModel(modelOptions.find((model) => model.value === data[data.length - 1].model));
+                    setMessageByIdLoading(false);
+                } else {
+                    console.error('Error fetching chat message details:', response.statusText);
+                    setMessageByIdLoading(false);
+                }
             } catch (error) {
-              console.error('Error fetching chat message details:', error);
+                console.error('Error fetching chat message details:', error);
+                setMessageByIdLoading(false);
             }
         }
-        
+
         if (chatId) {
             fetchChatMessageDetails(chatId);
         }
@@ -282,20 +289,47 @@ export const DashboardV2 = () => {
                     <div className="row-span-9 flex justify-center px-4 overflow-y-auto scroll-container" style={{
                         height: "calc(80vh - 61px)"
                     }}>
-                        <div className="w-full max-w-4xl py-2 flex flex-col gap-3 px-4">
-                            <div className="w-full flex justify-end">
-                                <UserCard message={"How to make profit?"} profilePicture={localStorage.getItem("profilePicture")} />
-                            </div>
-                            <div className="w-full flex justify-start">
-                                <AiCard message={"There are many ways to make a profit, but here are some common strategies:Start a business: One of the most common ways to make a profit is to start your own business. This could be anything from selling products or services to starting a consulting firm or freelance business.Invest in stocks or real estate: Another way to make a profit is to invest in stocks or real estate. By buying low and selling high, you can make a profit on your investments. Offer a service: If you have a skill or talent, you can offer your services to others for a fee. This could be anything from tutoring or coaching to graphic design or writing. Sell products online: With the rise of e-commerce, it's easier than ever to sell products online. You can start your own online store or sell products through platforms like Etsy or Amazon. Rent out property: If you own property, you can make a profit by renting it out to tenants. This could be a residential property, commercial property, or even a vacation rental. Monetize your hobbies: If you have a hobby or passion, you can often find ways to monetize it. This could be through selling handmade crafts, teaching classes, or creating content online. Ultimately, the key to making a profit is to find a way to provide value to others and monetize that value. It may take time and effort to build a profitable business or investment portfolio, but with persistence and hard work, it is possible to make a profit in various ways."} profilePicture={localStorage.getItem("profilePicture")} />
-                            </div>
-                            <div className="w-full flex justify-end">
-                                <UserCard message={"How to make profit?"} profilePicture={localStorage.getItem("profilePicture")} />
-                            </div>
-                            <div className="w-full flex justify-start">
-                                <AiCard message={"There are many ways to make a profit, but here are some common strategies:Start a business: One of the most common ways to make a profit is to start your own business. This could be anything from selling products or services to starting a consulting firm or freelance business.Invest in stocks or real estate: Another way to make a profit is to invest in stocks or real estate. By buying low and selling high, you can make a profit on your investments. Offer a service: If you have a skill or talent, you can offer your services to others for a fee. This could be anything from tutoring or coaching to graphic design or writing. Sell products online: With the rise of e-commerce, it's easier than ever to sell products online. You can start your own online store or sell products through platforms like Etsy or Amazon. Rent out property: If you own property, you can make a profit by renting it out to tenants. This could be a residential property, commercial property, or even a vacation rental. Monetize your hobbies: If you have a hobby or passion, you can often find ways to monetize it. This could be through selling handmade crafts, teaching classes, or creating content online. Ultimately, the key to making a profit is to find a way to provide value to others and monetize that value. It may take time and effort to build a profitable business or investment portfolio, but with persistence and hard work, it is possible to make a profit in various ways."} profilePicture={localStorage.getItem("profilePicture")} />
-                            </div>
-                        </div>
+                        {messageByIdLoading ? <div className="flex justify-center items-center">
+                            <img src={loading} alt="loading" width={100} height={100} />
+                        </div> : <div className="w-full max-w-4xl py-2 flex flex-col gap-3 px-4">
+                            {messages.map((message, index) => (
+                                <React.Fragment key={index}>
+                                    {previousModel !== message.model && (
+                                        <>
+                                            <DividerWithText text={previousModel = message.model} color={modelOptions.find(
+                                                (model) => model.value === message.model
+                                            ).color}
+                                            />
+                                        </>
+                                    )}
+
+                                    {message.user_message !== "" && (
+                                        <div className="w-full flex justify-end">
+                                            <UserCard message={message.user_message} profilePicture={profilePicture} />
+                                        </div>
+                                    )}
+                                    {message.ai_message !== "" && (
+                                        <div className="w-full flex justify-start">
+                                            <AiCard
+                                                message={message.ai_message}
+                                            // retryComponent={messages.length - 1 === index && showRetry ? (
+                                            //     <button
+                                            //         className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+                                            //         onClick={() => {
+                                            //             // handleRetry(true);
+                                            //         }}
+                                            //     >
+                                            //         <AiOutlineReload />
+                                            //     </button>
+                                            // ) : null}
+                                            />
+                                        </div>
+                                    )}
+                                </React.Fragment>
+                            ))}
+
+                        </div>}
+
                     </div>
 
                     <div className="row-span-2 justify-center items-center flex px-4 sticky bottom-0">
