@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { LuPlus } from "react-icons/lu";
 import { Link, useParams } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
+import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MdExpandMore } from "react-icons/md";
 import { useDisclosure } from "@nextui-org/react";
 import { SettingsModal } from '../components/SettingsModal';
@@ -16,15 +17,20 @@ import { UserCard } from '../components/UserCard';
 import { AiCard } from '../components/AiCard';
 import DividerWithText from '../components/DividerWithText';
 import loading from '../images/loading.webp';
+import { AiOutlineReload } from 'react-icons/ai';
+import  LoadingSpinner  from '../components/LoadingSpinner';
 
 export const DashboardV2 = () => {
-
+    const { chatIdParams } = useParams();
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
-    const { chatId } = useParams();
+
+
+    const [chatId, setChatId] = useState(null);
 
     const [chatHistory, setChatHistory] = useState([]);
     const [hasMoreChats, setHasMoreChats] = useState(true);
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoadingChatHistory, setIsLoadingChatHistory] = useState(false);
+    const [isLoadingGeneratingChat, setIsLoadingGeneratingChat] = useState(false);
     const accessToken = localStorage.getItem("accessToken");
     const [modal, setModal] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -33,6 +39,11 @@ export const DashboardV2 = () => {
     let previousModel = null;
     let profilePicture = localStorage.getItem("profilePicture");
     const [messageByIdLoading, setMessageByIdLoading] = useState(false);
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [userInput, setUserInput] = useState("");
+    const [showRetry, setShowRetry] = useState(false); // New state for retry
+    const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
+    const chatWindowRef = useRef(null);
 
     const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -45,7 +56,7 @@ export const DashboardV2 = () => {
 
     const fetchUserChatHistory = async (page = 1) => {
         try {
-            setIsLoading(true);
+            setIsLoadingChatHistory(true);
             const response = await fetch(`${API_HOST}/v1/chat_history?page=${page}`, {
                 headers: {
                     Authorization: `Bearer ${accessToken}`,
@@ -64,19 +75,202 @@ export const DashboardV2 = () => {
                         return [...prevChats, ...uniqueChats];
                     });
                     setHasMoreChats(data.length === 10); // Assuming the API returns 10 items per page
-                    setIsLoading(false);
+                    setIsLoadingChatHistory(false);
                 }
             } else {
                 console.error("Error fetching chat history:", response.statusText);
                 setHasMoreChats(false);
-                setIsLoading(false);
+                setIsLoadingChatHistory(false);
             }
         } catch (error) {
             console.error("Error fetching chat history:", error);
             setHasMoreChats(false);
-            setIsLoading(false);
+            setIsLoadingChatHistory(false);
         }
     };
+
+    const getTitle = async (userHistory, chatId) => {
+        try {
+            const requestData = {
+                "user_input": userInput,
+                "chat_history": userHistory,
+                "chat_model": selectedModel.value,
+                "temperature": 0.8,
+                "chat_id": chatId,
+            };
+
+            const response = await fetch(`${API_HOST}/v1/chat_title`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(requestData),
+            });
+
+            if (response.ok) {
+                await fetchUserChatHistory();
+            } else {
+                console.error('Error fetching chat title:', response.statusText);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error fetching chat title:', error);
+            return null;
+        }
+    };
+
+    const getAIResponse = async (userMessage = userInput, history = messages, regenerateMessage = false) => {
+        try {
+            setIsLoadingGeneratingChat(true);
+            setShowRetry(false);
+            setIsRequestFailed(false);
+
+            // Take the last 'historyLimit' history messages
+            const historyLimit = Math.min(Math.max(parseInt(localStorage.getItem("history") || 10), 10), 30);
+            localStorage.setItem("history", historyLimit); // Update the local storage with sanitized value
+
+            if (history.length > historyLimit) {
+                history = history.slice(history.length - historyLimit);
+            }
+
+            const requestData = {
+                user_input: userMessage,
+                chat_history: history,
+                chat_model: selectedModel.value,
+                temperature: parseFloat(localStorage.getItem("temperature") || 0.7),
+                chat_id: chatId,
+                regenerate_message: regenerateMessage
+            };
+
+            setUserInput(""); // Reset user input
+
+            let userHistory = [{ ai_message: "", user_message: userMessage }];
+            let idChat = chatId;
+
+            await fetchEventSource(`${API_HOST}/v1/chat_event_streaming`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Accept: "text/event-stream",
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(requestData),
+                onopen(response) {
+                    if (response.ok) {
+                        console.info("Event source connection established");
+                        setIsStreaming(true);
+                    } else {
+                        console.error("Failed to establish event source connection, status: ", response.status);
+                        setShowRetry(true);
+                    }
+                },
+                onmessage(event) {
+                    const data = JSON.parse(event.data);
+                    setIsLoadingGeneratingChat(false);
+
+                    if (chatId === null && data.is_final) {
+                        setChatId(data.chat_id);
+                        idChat = data.chat_id;
+                    }
+
+                    // Update messages and UI
+                    // update userHistory
+                    userHistory = ((prevMessages) => {
+                        const updatedMessages = [...prevMessages];
+                        const lastIndex = updatedMessages.length - 1;
+                        updatedMessages[lastIndex] = {
+                            ...updatedMessages[lastIndex],
+                            ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+                        };
+                        return updatedMessages;
+                    })(userHistory);
+
+                    setMessages((prevMessages) => {
+                        const updatedMessages = [...prevMessages];
+                        const lastIndex = updatedMessages.length - 1;
+                        updatedMessages[lastIndex] = {
+                            ...updatedMessages[lastIndex],
+                            ai_message: updatedMessages[lastIndex].ai_message + data?.data || "",
+                            model: selectedModel.value
+                        };
+                        return updatedMessages;
+                    });
+                    scrollToBottom();
+                },
+                onclose() {
+                    console.info("Event source connection closed");
+                    setIsStreaming(false);
+                    setShowRetry(true);
+                    setIsLoadingGeneratingChat(false);
+                    if (messages.length === 0) {
+                        getTitle(userHistory, idChat);
+                    }
+                },
+                onerror(error) {
+                    console.error("Event source connection error: ", error);
+                    setIsStreaming(false);
+                    setIsLoadingGeneratingChat(false);
+                    setShowRetry(true);
+                    setIsRequestFailed(true);
+                }
+            });
+        } catch (error) {
+            console.error("Error in setting up event source:", error);
+            setIsRequestFailed(true);
+            setIsLoadingGeneratingChat(false);
+        }
+    };
+
+    const scrollToBottom = useCallback(() => {
+        if (chatWindowRef.current) {
+            chatWindowRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, []);
+
+
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && !isStreaming) {
+            e.preventDefault(); // Prevent the default action to avoid a new line being added
+            onSend(userInput); // Call the onSend function with the userInput as an argument
+        }
+    };
+
+    const onSend = async (message) => {
+        // return if the message is empty or only contains spaces
+        if (!message.trim()) return;
+        const newMessages = [...messages];
+        newMessages.push({
+            ai_message: "",
+            user_message: message,
+            model: selectedModel.value
+        });
+        setMessages(newMessages);
+        await getAIResponse();
+    }
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [scrollToBottom, messages]);
+
+    const handleRetry = async (regenerateMessage = false) => {
+        setIsRequestFailed(false); // set the request failed state to false
+        // set user input to the last user message
+        setUserInput(messages[messages.length - 1].user_message);
+        // set the last AI message to an empty string
+        setMessages((prevMessages) => {
+            const updatedMessages = [...prevMessages];
+            const lastIndex = updatedMessages.length - 1;
+            updatedMessages[lastIndex] = {
+                ...updatedMessages[lastIndex],
+                ai_message: "",
+            };
+            return updatedMessages;
+        });
+
+        // call the getAIResponse function to retry the last message
+        await getAIResponse(messages[messages.length - 1].user_message, messages.slice(0, messages.length - 1), regenerateMessage);
+    }
 
     useEffect(() => {
         if (chatHistory.length === 0 && accessToken) {
@@ -85,10 +279,10 @@ export const DashboardV2 = () => {
     }, []);
 
     useEffect(() => {
-        const fetchChatMessageDetails = async (chatId) => {
+        const fetchChatMessageDetails = async (chatIdParams) => {
             try {
                 setMessageByIdLoading(true);
-                const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatId}`, {
+                const response = await fetch(`${API_HOST}/v1/chat_by_id?chat_id=${chatIdParams}`, {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -128,10 +322,10 @@ export const DashboardV2 = () => {
             }
         }
 
-        if (chatId) {
-            fetchChatMessageDetails(chatId);
+        if (chatIdParams) {
+            fetchChatMessageDetails(chatIdParams);
         }
-    }, [chatId]);
+    }, [chatIdParams]);
 
 
     return (
@@ -154,7 +348,7 @@ export const DashboardV2 = () => {
                     </Tooltip>
                 </div>
                 <div className="pt-10">
-                    {isLoading && <div className="flex justify-center items-center">
+                    {isLoadingChatHistory && <div className="flex justify-center items-center">
                         <Spinner size="large" />
                     </div>}
                     <div className="h-96 overflow-y-auto scroll-container">
@@ -172,15 +366,15 @@ export const DashboardV2 = () => {
                 </div>
                 <div className="pt-2">
                     <div className="p-2 hover:bg-[#212121] hover:rounded-lg cursor-pointer text-center flex">
-                        {!isLoading && hasMoreChats && <div className="w-10 h-10 rounded-full flex justify-center items-center">
+                        {!isLoadingChatHistory && hasMoreChats && <div className="w-10 h-10 rounded-full flex justify-center items-center">
                             <MdExpandMore size={20} />
                         </div>}
 
                         <button className="pl-4"
                             onClick={() => fetchUserChatHistory((chatHistory.length / 10) + 1)}
-                            disabled={isLoading || !hasMoreChats}
+                            disabled={isLoadingChatHistory || !hasMoreChats}
                         >
-                            {isLoading ? null : hasMoreChats ? "Show More" : "Reached the bottom"}
+                            {isLoadingChatHistory ? null : hasMoreChats ? "Show More" : "Reached the bottom"}
                         </button>
                     </div>
                 </div>
@@ -312,21 +506,27 @@ export const DashboardV2 = () => {
                                         <div className="w-full flex justify-start">
                                             <AiCard
                                                 message={message.ai_message}
-                                            // retryComponent={messages.length - 1 === index && showRetry ? (
-                                            //     <button
-                                            //         className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
-                                            //         onClick={() => {
-                                            //             // handleRetry(true);
-                                            //         }}
-                                            //     >
-                                            //         <AiOutlineReload />
-                                            //     </button>
-                                            // ) : null}
+                                                retryComponent={messages.length - 1 === index && showRetry ? (
+                                                    <button
+                                                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+                                                        onClick={() => {
+                                                            handleRetry(true);
+                                                        }}
+                                                    >
+                                                        <AiOutlineReload />
+                                                    </button>
+                                                ) : null}
                                             />
                                         </div>
                                     )}
                                 </React.Fragment>
                             ))}
+
+                            {isLoadingGeneratingChat && messages.length > 0 && messages[messages.length - 1].ai_message === "" && (
+                                <div className="w-full flex justify-start">
+                                    <LoadingSpinner /> {/* Render the LoadingSpinner component */}
+                                </div>
+                            )}
 
                         </div>}
 
@@ -335,22 +535,22 @@ export const DashboardV2 = () => {
                     <div className="row-span-2 justify-center items-center flex px-4 sticky bottom-0">
                         <InputBar
                             className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
-                            // userInput={userInput}
-                            // setUserInput={setUserInput}
+                            userInput={userInput}
+                            setUserInput={setUserInput}
                             endContent={
                                 <Button
                                     isIconOnly
                                     variant="faded"
                                     aria-label="Send"
                                     onClick={() => {
-                                        // onSend(userInput);
+                                        onSend(userInput);
                                     }}
-                                // isDisabled={isStreaming}
+                                    isDisabled={isStreaming}
                                 >
                                     <BsSendArrowUp />
                                 </Button>
                             }
-                        // onKeyDown={handleKeyPress}
+                            onKeyDown={handleKeyPress}
                         />
                     </div>
                 </div>
