@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { LuPlus } from "react-icons/lu";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MdExpandMore } from "react-icons/md";
@@ -18,12 +18,11 @@ import { AiCard } from '../components/AiCard';
 import DividerWithText from '../components/DividerWithText';
 import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
-import  LoadingSpinner  from '../components/LoadingSpinner';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
-
 
     const [chatId, setChatId] = useState(null);
 
@@ -44,7 +43,6 @@ export const DashboardV2 = () => {
     const [showRetry, setShowRetry] = useState(false); // New state for retry
     const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
     const chatWindowRef = useRef(null);
-
     const { isOpen, onOpen, onClose } = useDisclosure();
 
     const limitSentence = (sentence) => {
@@ -224,7 +222,7 @@ export const DashboardV2 = () => {
 
     const scrollToBottom = useCallback(() => {
         if (chatWindowRef.current) {
-            chatWindowRef.current.scrollIntoView({ behavior: 'smooth' });
+            chatWindowRef.current.scrollIntoView({ behavior: 'auto' });
         }
     }, []);
 
@@ -279,6 +277,16 @@ export const DashboardV2 = () => {
     }, []);
 
     useEffect(() => {
+        if (chatId !== null) {
+            // Append the chatId to the URL in path parameter without re-rendering the component
+            const url = new URL(window.location);
+            url.pathname = `/chatv2/${chatId}`;
+            window.history.replaceState({}, '', url);
+        }
+    }, [chatId]);
+
+
+    useEffect(() => {
         const fetchChatMessageDetails = async (chatIdParams) => {
             try {
                 setMessageByIdLoading(true);
@@ -321,17 +329,18 @@ export const DashboardV2 = () => {
                 setMessageByIdLoading(false);
             }
         }
-
         if (chatIdParams) {
+            setShowRetry(true);
+            setChatId(chatIdParams);
             fetchChatMessageDetails(chatIdParams);
         }
     }, [chatIdParams]);
 
-
     return (
         <div className="grid grid-cols-12 h-screen">
             {/* Sidebar */}
-            <div className={`bg-black text-white ${isSidebarOpen ? 'col-span-2' : 'hidden'} p-4 flex flex-col h-full`}>
+            <div className={`bg-black text-white fixed inset-y-0 left-0 z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${isSidebarOpen ? 'col-span-2' : 'hidden'} duration-500 p-4 flex flex-col h-full lg:h-screen`}
+            >
                 <div className="flex justify-between">
                     <button
                         className="w-10 h-10 rounded-full hover:bg-[#212121] text-white flex justify-center items-center"
@@ -340,11 +349,20 @@ export const DashboardV2 = () => {
                         <GiHamburgerMenu size={20} />
                     </button>
                     <Tooltip showArrow={true} content="New Chat" closeDelay={500} placement='right'>
-                        <button
-                            className="w-10 h-10 rounded-full hover:bg-[#212121] text-white flex justify-center items-center"
+                        <Link
+                            to="/chatv2"
+                            onClick={() => {
+                                setMessages([]);
+                                setChatId(null);
+                            }}
                         >
-                            <LuPlus size="20" />
-                        </button>
+                            <button
+                                className="w-10 h-10 rounded-full hover:bg-[#212121] text-white flex justify-center items-center"
+                            >
+                                <LuPlus size="20" />
+                            </button>
+                        </Link>
+
                     </Tooltip>
                 </div>
                 <div className="pt-10">
@@ -410,34 +428,45 @@ export const DashboardV2 = () => {
                 </div>
             </div>
 
-            <div className={`${isSidebarOpen ? 'col-span-10' : 'col-span-12'} bg-white p-4 flex`}>
-                <div className="grid grid-rows-12 w-full">
+            <div className={`${isSidebarOpen ? 'col-span-12 lg:col-span-10' : 'col-span-12'} flex flex-col h-screen overflow-y-auto md:ml-0 ml-auto`}>
+                <div className="flex flex-col h-screen w-full">
                     {/* Navbar */}
-                    <div className="flex items-center sticky top-0">
+                    <div className="flex justify-between items-center sticky top-0 h-16 px-2 z-10">
                         <div className="w-16">
-                            {!isSidebarOpen && <button
-                                className={`w-10 h-10 rounded-full  ${isSidebarOpen ? 'text-white hover:bg-[#212121]' : 'text-black hover:bg-[#efebeb]'} flex justify-center items-center`}
-                                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            >
-                                <GiHamburgerMenu size={20} />
-                            </button>}
-                        </div>
-                        <div className="w-12 justify-start">
-                            <Tooltip showArrow={true} content="New Chat" closeDelay={500} placement='right'>
+                            {!isSidebarOpen && (
                                 <button
-                                    className="w-10 h-10 rounded-full hover:bg-gray-100 flex justify-center items-center"
+                                    className={`w-10 h-10 rounded-full ${isSidebarOpen ? 'text-white hover:bg-[#212121]' : 'text-black hover:bg-[#efebeb]'
+                                        } flex justify-center items-center`}
+                                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                                 >
-                                    <LuPlus size="20" />
+                                    <GiHamburgerMenu size={20} />
                                 </button>
-                            </Tooltip>
+                            )}
                         </div>
-                        <div className="w-2/12  flex justify-start">
+                        {!isSidebarOpen && (
+                            <div className="w-12 justify-start hidden md:block">
+                                <Tooltip showArrow={true} content="New Chat" closeDelay={500} placement="right">
+                                    <Link
+                                        to="/chatv2"
+                                        onClick={() => {
+                                            setMessages([]);
+                                            setChatId(null);
+                                        }}
+                                    >
+                                        <button className="w-10 h-10 rounded-full hover:bg-gray-100 flex justify-center items-center">
+                                            <LuPlus size="20" />
+                                        </button>
+                                    </Link>
+                                </Tooltip>
+                            </div>
+                        )}
+                        <div className="w-8/12 flex items-center justify-right md:w-2/12 md:justify-start">
                             <Select
                                 className="w-52 md:w-full ml-4"
                                 selectedKeys={[selectedModel?.value]}
-                                onChange={(event) => setSelectedModel(
-                                    modelOptions.find((model) => model.value === event.target.value)
-                                )}
+                                onChange={(event) =>
+                                    setSelectedModel(modelOptions.find((model) => model.value === event.target.value))
+                                }
                                 label="Select model"
                                 startContent={selectedModel?.companyLogo}
                             >
@@ -452,7 +481,7 @@ export const DashboardV2 = () => {
                                 ))}
                             </Select>
                         </div>
-                        <div className="w-9/12 flex justify-end items-center">
+                        <div className="w-9/12 flex justify-end items-center pr-3">
                             <Dropdown placement="bottom-end">
                                 <DropdownTrigger>
                                     <Avatar
@@ -463,26 +492,35 @@ export const DashboardV2 = () => {
                                     />
                                 </DropdownTrigger>
                                 <DropdownMenu aria-label="Profile Actions" variant="flat">
-                                    <DropdownItem key="settings" startContent={<IoSettingsOutline />} showDivider onPress={() => {
-                                        setModal('settings');
-                                        onOpen();
-                                    }}>
+                                    <DropdownItem
+                                        key="settings"
+                                        startContent={<IoSettingsOutline />}
+                                        showDivider
+                                        onPress={() => {
+                                            setModal('settings');
+                                            onOpen();
+                                        }}
+                                    >
                                         My Settings
                                     </DropdownItem>
-                                    <DropdownItem key="logout" color="danger" startContent={<AiOutlineLogout />} onPress={() => {
-                                        setModal('logout');
-                                        onOpen();
-                                    }}>
+                                    <DropdownItem
+                                        key="logout"
+                                        color="danger"
+                                        startContent={<AiOutlineLogout />}
+                                        onPress={() => {
+                                            setModal('logout');
+                                            onOpen();
+                                        }}
+                                    >
                                         Log Out
                                     </DropdownItem>
                                 </DropdownMenu>
                             </Dropdown>
                         </div>
+
                     </div>
 
-                    <div className="row-span-9 flex justify-center px-4 overflow-y-auto scroll-container" style={{
-                        height: "calc(80vh - 61px)"
-                    }}>
+                    <div className={`flex flex-col flex-grow items-center ${messageByIdLoading ? "justify-center" : ""} overflow-y-auto scroll-container pr-1 pl-1`}>
                         {messageByIdLoading ? <div className="flex justify-center items-center">
                             <img src={loading} alt="loading" width={100} height={100} />
                         </div> : <div className="w-full max-w-4xl py-2 flex flex-col gap-3 px-4">
@@ -528,11 +566,13 @@ export const DashboardV2 = () => {
                                 </div>
                             )}
 
+                            <div ref={chatWindowRef} />
+
                         </div>}
 
                     </div>
 
-                    <div className="row-span-2 justify-center items-center flex px-4 sticky bottom-0">
+                    <div className="flex justify-center items-center flex-none px-4 sticky bottom-0">
                         <InputBar
                             className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
                             userInput={userInput}

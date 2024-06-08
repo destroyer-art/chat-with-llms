@@ -33,7 +33,7 @@ function App() {
                 <DashboardV2 />
               </ProtectedPage>
           } />
-          <Route path="/chatv2/:chatId" 
+          <Route path="/chatv2/:chatIdParams" 
           element={
             <ProtectedPage>
                 <DashboardV2 />

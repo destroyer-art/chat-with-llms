@@ -13,6 +13,7 @@ const InputBar = ({ className, userInput, setUserInput, endContent, onKeyDown })
             className={className} // Use a predefined screen size value
             fullWidth={false}
             minRows={1}
+            // maxRows={4}
             endContent={endContent}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
