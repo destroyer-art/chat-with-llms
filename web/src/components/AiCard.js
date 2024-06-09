@@ -3,13 +3,14 @@ import { Card, CardBody, CardFooter } from "@nextui-org/react";
 import { AiOutlineCopy, AiOutlineCheck } from 'react-icons/ai'; // Import AiOutlineReload for the retry icon
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useTheme } from '../components/ThemeContext';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export const AiCard = ({ message, retryComponent }) => {
   const [copied, setCopied] = useState(false);
   const [codeToCopy, setCodeToCopy] = useState('');
-  
+  const { theme } = useTheme();
 
   const handleCopy = async () => {
     try {
@@ -32,7 +33,7 @@ export const AiCard = ({ message, retryComponent }) => {
   };
 
   return (
-    <Card className="max-w-max bg-gray-100 text-gray-800">
+    <Card className={`max-w-max dark:bg-gray-700 dark:text-gray-200 bg-white text-gray-800`}>
       <CardBody>
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
@@ -51,7 +52,7 @@ export const AiCard = ({ message, retryComponent }) => {
                     style={okaidia}
                   />
                   <button
-                    className="absolute top-2 right-2 flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+                    className={`absolute top-2 right-2 flex items-center gap-2 p-2 rounded transition duration-300 ease-in-out dark:text-gray-400 dark:hover:text-white text-gray-600 hover:text-gray-800}`} 
                     onClick={() => handleCodeCopy(code)}
                   >
                     {codeToCopy === code ? (
@@ -87,7 +88,7 @@ export const AiCard = ({ message, retryComponent }) => {
         )} */}
         {retryComponent}
         <button
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+          className={`flex items-center gap-2 dark:text-gray-400 dark:hover:text-white text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out`}
           onClick={handleCopy}
         >
           {copied ? (

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { LuPlus } from "react-icons/lu";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MdExpandMore } from "react-icons/md";
@@ -19,6 +19,7 @@ import DividerWithText from '../components/DividerWithText';
 import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { useTheme } from '../components/ThemeContext';
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
@@ -44,6 +45,7 @@ export const DashboardV2 = () => {
     const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
     const chatWindowRef = useRef(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const { theme } = useTheme();
 
     const limitSentence = (sentence) => {
         // limit chat title to 30 characters
@@ -280,7 +282,7 @@ export const DashboardV2 = () => {
         if (chatId !== null) {
             // Append the chatId to the URL in path parameter without re-rendering the component
             const url = new URL(window.location);
-            url.pathname = `/chatv2/${chatId}`;
+            url.pathname = `/chat/${chatId}`;
             window.history.replaceState({}, '', url);
         }
     }, [chatId]);
@@ -337,32 +339,31 @@ export const DashboardV2 = () => {
     }, [chatIdParams]);
 
     return (
-        <div className="grid grid-cols-12 h-screen">
+        <div className="grid grid-cols-12 h-screen dark:bg-zinc-900">
             {/* Sidebar */}
-            <div className={`bg-black text-white fixed inset-y-0 left-0 z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${isSidebarOpen ? 'col-span-2' : 'hidden'} duration-500 p-4 flex flex-col h-full lg:h-screen`}
+            <div className={`dark:bg-stone-900 dark:text-gray-200 bg-gray-100 text-gray-800 fixed inset-y-0 left-0 z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 ${isSidebarOpen ? 'col-span-2' : 'hidden'} duration-500 p-4 flex flex-col h-full lg:h-screen`}
             >
                 <div className="flex justify-between">
                     <button
-                        className="w-10 h-10 rounded-full hover:bg-[#212121] text-white flex justify-center items-center"
+                        className="w-10 h-10 rounded-full dark:text-gray-200 dark:hover:bg-gray-600 hover:bg-gray-200 text-gray-800 flex justify-center items-center"
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                     >
                         <GiHamburgerMenu size={20} />
                     </button>
                     <Tooltip showArrow={true} content="New Chat" closeDelay={500} placement='right'>
                         <Link
-                            to="/chatv2"
+                            to="/chat"
                             onClick={() => {
                                 setMessages([]);
                                 setChatId(null);
                             }}
                         >
                             <button
-                                className="w-10 h-10 rounded-full hover:bg-[#212121] text-white flex justify-center items-center"
+                                className="w-10 h-10 rounded-full dark:hover:bg-gray-600 dark:text hover:bg-gray-200  flex justify-center items-center"
                             >
                                 <LuPlus size="20" />
                             </button>
                         </Link>
-
                     </Tooltip>
                 </div>
                 <div className="pt-10">
@@ -372,10 +373,10 @@ export const DashboardV2 = () => {
                     <div className="h-96 overflow-y-auto scroll-container">
                         {chatHistory.map((chat, index) => (
                             <Link
-                                to={`/chatv2/${chat.chat_id}`}
+                                to={`/chat/${chat.chat_id}`}
                                 key={chat.chat_id}
                             >
-                                <div key={index} className="p-2 hover:bg-[#212121] hover:rounded-lg cursor-pointer font-light">
+                                <div key={index} className="p-2 dark:hover:bg-gray-600 hover:bg-gray-200 hover:rounded-lg cursor-pointer font-light">
                                     {chat?.chat_title?.length > 0 ? limitSentence(chat?.chat_title) : "Untitled Chat"}
                                 </div>
                             </Link>
@@ -383,7 +384,7 @@ export const DashboardV2 = () => {
                     </div>
                 </div>
                 <div className="pt-2">
-                    <div className="p-2 hover:bg-[#212121] hover:rounded-lg cursor-pointer text-center flex">
+                    <div className="p-2 dark:hover:bg-gray-600 hover:bg-gray-200 hover:rounded-lg cursor-pointer text-center flex">
                         {!isLoadingChatHistory && hasMoreChats && <div className="w-10 h-10 rounded-full flex justify-center items-center">
                             <MdExpandMore size={20} />
                         </div>}
@@ -400,7 +401,7 @@ export const DashboardV2 = () => {
                 <div className="pt-2 mt-auto flex justify-between">
                     <Dropdown placement="top">
                         <DropdownTrigger>
-                            <Button className="bg-inherit text-white p-2 hover:rounded-lg hover:bg-[#212121]" startContent={<Avatar
+                            <Button className="bg-inherit dark:text-gray-200 dark:hover:bg-gray-600 text-gray-800 p-2 hover:rounded-lg hover:bg-gray-200" startContent={<Avatar
                                 src={localStorage.getItem("profilePicture")}
                                 alt="profile-pic"
                                 size="large"
@@ -428,6 +429,7 @@ export const DashboardV2 = () => {
                 </div>
             </div>
 
+
             <div className={`${isSidebarOpen ? 'col-span-12 lg:col-span-10' : 'col-span-12'} flex flex-col h-screen overflow-y-auto md:ml-0 ml-auto`}>
                 <div className="flex flex-col h-screen w-full">
                     {/* Navbar */}
@@ -435,7 +437,7 @@ export const DashboardV2 = () => {
                         <div className="w-16">
                             {!isSidebarOpen && (
                                 <button
-                                    className={`w-10 h-10 rounded-full ${isSidebarOpen ? 'text-white hover:bg-[#212121]' : 'text-black hover:bg-[#efebeb]'
+                                    className={`w-10 h-10 rounded-full ${isSidebarOpen ? 'dark:text-gray-200 dark:hover:bg-gray-600 text-white hover:bg-[#212121]' : 'dark:text-gray-200 dark:hover:bg-gray-600 text-black hover:bg-[#efebeb]'
                                         } flex justify-center items-center`}
                                     onClick={() => setIsSidebarOpen(!isSidebarOpen)}
                                 >
@@ -447,13 +449,13 @@ export const DashboardV2 = () => {
                             <div className="w-12 justify-start hidden md:block">
                                 <Tooltip showArrow={true} content="New Chat" closeDelay={500} placement="right">
                                     <Link
-                                        to="/chatv2"
+                                        to="/chat"
                                         onClick={() => {
                                             setMessages([]);
                                             setChatId(null);
                                         }}
                                     >
-                                        <button className="w-10 h-10 rounded-full hover:bg-gray-100 flex justify-center items-center">
+                                        <button className="w-10 h-10 rounded-full dark:hover:bg-gray-600 hover:bg-gray-100 flex justify-center items-center">
                                             <LuPlus size="20" />
                                         </button>
                                     </Link>
@@ -546,7 +548,7 @@ export const DashboardV2 = () => {
                                                 message={message.ai_message}
                                                 retryComponent={messages.length - 1 === index && showRetry ? (
                                                     <button
-                                                        className="flex items-center gap-2 text-gray-600 hover:text-gray-800 p-2 rounded transition duration-300 ease-in-out"
+                                                        className={`flex items-center gap-2 dark:text-gray-400 dark:hover:text-white p-2 rounded transition duration-300 ease-in-out`}
                                                         onClick={() => {
                                                             handleRetry(true);
                                                         }}

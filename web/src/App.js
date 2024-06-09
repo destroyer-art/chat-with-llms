@@ -13,7 +13,7 @@ function App() {
           <Route path="/" element={
             <LoginPage />
           } />
-          <Route
+          {/* <Route
             path="/chat"
             element={
               <ProtectedPage>
@@ -26,14 +26,14 @@ function App() {
             <ProtectedPage>
                 <Dashboard />
               </ProtectedPage>
-          } />
-          <Route path="/chatv2" 
+          } /> */}
+          <Route path="/chat" 
           element={
             <ProtectedPage>
                 <DashboardV2 />
               </ProtectedPage>
           } />
-          <Route path="/chatv2/:chatIdParams" 
+          <Route path="/chat/:chatIdParams" 
           element={
             <ProtectedPage>
                 <DashboardV2 />
