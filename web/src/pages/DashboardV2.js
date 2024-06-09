@@ -19,7 +19,6 @@ import DividerWithText from '../components/DividerWithText';
 import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { useTheme } from '../components/ThemeContext';
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
@@ -45,7 +44,6 @@ export const DashboardV2 = () => {
     const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
     const chatWindowRef = useRef(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
-    const { theme } = useTheme();
 
     const limitSentence = (sentence) => {
         // limit chat title to 30 characters
