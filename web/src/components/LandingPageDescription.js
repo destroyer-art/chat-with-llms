@@ -1,12 +1,11 @@
 import React from 'react';
 import { Button } from '@nextui-org/react';
 
-
 export const LandingPageDescription = () => {
   return (
     <React.Fragment>
       <div className="w-full pb-12 md:pb-24 lg:pb-32 border-b border-gray-200 my-8 md:col-span-2"></div>
-      <div className="flex flex-col items-center justify-center space-y-4 text-center">
+      <div className="flex flex-col items-center justify-center space-y-4 text-center px-4 sm:px-0">
         <div className="inline-block rounded-lg text-md bg-gray-100 px-3 py-1 text-sm dark:bg-gray-800">
           Try Different LLMs
         </div>
@@ -16,7 +15,7 @@ export const LandingPageDescription = () => {
           GPT, Gemini, Perplexity, Mistral, and Anthropic, all in one place.
         </p>
       </div>
-      <div className="mx-auto justify-center grid items-start gap-8 sm:max-w-4xl sm:grid-cols-2 md:gap-12 lg:max-w-5xl lg:grid-cols-3 mt-16">
+      <div className="mx-auto justify-center grid items-start gap-8 sm:max-w-4xl sm:grid-cols-2 md:gap-12 lg:max-w-5xl lg:grid-cols-3 mt-16 px-4 sm:px-0">
         <div className="grid gap-1">
           <h3 className="text-lg font-bold">GPT</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">

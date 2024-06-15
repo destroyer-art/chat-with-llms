@@ -10,10 +10,9 @@ const InputBar = ({ className, userInput, setUserInput, endContent, onKeyDown })
             type="textarea"
             size="lg"
             placeholder="Enter your prompt here"
-            className={className} // Use a predefined screen size value
+            className={`textarea-placeholder ${className}`} // Use a predefined screen size value
             fullWidth={false}
             minRows={1}
-            // maxRows={4}
             endContent={endContent}
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}

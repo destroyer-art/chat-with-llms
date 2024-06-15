@@ -28,7 +28,7 @@ export const LandingPagePromotion = () => {
         </div>
         <div className="mx-auto w-full max-w-sm space-y-2">
           <Button
-            className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium shadow transition-colors"
+            className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium shadow transition-colors dark:bg-violet-600 dark:text-gray-100 dark:hover:bg-violet-700"
             variant="primary"
             onClick={
               async () => {

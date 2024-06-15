@@ -39,3 +39,15 @@ button {
 }
 
   
+.textarea-placeholder {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.textarea-placeholder::placeholder {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
