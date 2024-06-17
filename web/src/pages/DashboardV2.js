@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
+import { TbPremiumRights } from "react-icons/tb";
 import { LuPlus } from "react-icons/lu";
 import { Link, useParams } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
@@ -19,6 +20,7 @@ import DividerWithText from '../components/DividerWithText';
 import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { PlansModal } from "../components/PlansModal";
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
@@ -424,6 +426,7 @@ export const DashboardV2 = () => {
                     </Dropdown>
                     {modal === 'settings' && <SettingsModal isOpen={isOpen} onClose={onClose} />}
                     {modal === 'logout' && <ConfirmationModal isOpen={isOpen} onClose={onClose} text="Are you sure you want to log out?" />}
+                    {modal === 'plans' && <PlansModal isOpen={isOpen} onClose={onClose} />}
                 </div>
             </div>
 
@@ -492,6 +495,12 @@ export const DashboardV2 = () => {
                                     />
                                 </DropdownTrigger>
                                 <DropdownMenu aria-label="Profile Actions" variant="flat">
+                                    <DropdownItem key="plans" startContent={<TbPremiumRights />} showDivider onPress={() => {
+                                        setModal('plans');
+                                        onOpen();
+                                    }}>
+                                        My Plans
+                                    </DropdownItem>
                                     <DropdownItem
                                         key="settings"
                                         startContent={<IoSettingsOutline />}

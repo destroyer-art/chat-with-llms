@@ -63,6 +63,10 @@ def get_environment_variable(key):
     value = dotenv.get_key(dotenv.find_dotenv(), key)
     return value
 
+RAZORPAY_KEY_ID = get_environment_variable("RAZOR_PAY_KEY_ID")
+RAZORPAY_KEY_SECRET = get_environment_variable("RAZOR_PAY_KEY_SECRET")
+PLAN_ID = get_environment_variable("PLAN_ID")
+
 # Initialize a Firestore client with a specific service account key file
 if get_environment_variable("ENVIRONMENT") == "dev":
     cred = credentials.Certificate("serviceAccount.json")
