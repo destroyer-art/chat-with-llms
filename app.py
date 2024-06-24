@@ -35,6 +35,8 @@ from firebase_admin import credentials
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import uvicorn
+import razorpay
+from razorpay.resources.subscription import Subscription
 
 
 dotenv.load_dotenv()
@@ -75,6 +77,10 @@ else:
     firebase_admin.initialize_app()
 
 db = firestore.client()
+
+client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
+# Create an instance of the Subscription class
+subscription = Subscription(client)
 
 # This will just define that the Authorization header is required
 auth_scheme = HTTPBearer()
@@ -580,6 +586,31 @@ async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
             )
     except Exception as e:
         logging.error("Error processing chat request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.get("/v1/subscriptions", tags=["Subscription Endpoints"])
+async def get_subscriptions(token_info: dict = Depends(verify_token)):
+    """Get the subscriptions for the user."""
+    # create a subscription object using customer id as token_info['sub'] and plan id as PLAN_ID
+    try:
+        subscription_data = {
+            "customer_id": token_info['sub'],
+            "plan_id": PLAN_ID,
+            "total_count":6,
+            "quantity": 1,
+            "notes": {
+                "notes_key_1" : "This is a test note"
+            },
+            "start_at": int(datetime.datetime.now().timestamp()),
+            "end_at": int((datetime.datetime.now() + datetime.timedelta(days=30)).timestamp()),
+        }
+        
+        subscription_response = subscription.create(subscription_data)
+
+        return subscription_response
+    
+    except Exception as e:
+        logging.error("Error getting subscriptions: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
