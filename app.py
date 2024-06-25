@@ -37,6 +37,7 @@ from google.cloud.firestore_v1.base_query import FieldFilter
 import uvicorn
 import razorpay
 from razorpay.resources.subscription import Subscription
+from razorpay.resources.customer import Customer
 
 
 dotenv.load_dotenv()
@@ -81,6 +82,7 @@ db = firestore.client()
 client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
 # Create an instance of the Subscription class
 subscription = Subscription(client)
+customer = Customer(client)
 
 # This will just define that the Authorization header is required
 auth_scheme = HTTPBearer()
@@ -593,8 +595,26 @@ async def get_subscriptions(token_info: dict = Depends(verify_token)):
     """Get the subscriptions for the user."""
     # create a subscription object using customer id as token_info['sub'] and plan id as PLAN_ID
     try:
+        # check if customer id exists in the database
+        customer_ref = db.collection('users').document(token_info['sub'])
+        customer_data = customer_ref.get()
+        # check if customer_merchant_id exists in the database
+        customer_merchant_id = customer_data.to_dict().get('customer_merchant_id', None)
+        if not customer_merchant_id:
+            # create a customer in razorpay
+            customer_details = customer.create(data={
+                "name": customer_data.to_dict().get('username', None),
+                "email": customer_data.to_dict().get('email', None),
+                "fail_existing": 0
+            })
+            customer_merchant_id = customer_details['id']
+
+            customer_ref.update({
+                'customer_merchant_id': customer_merchant_id
+            })
+
         subscription_data = {
-            "customer_id": token_info['sub'],
+            "customer_id": customer_merchant_id,
             "plan_id": PLAN_ID,
             "total_count":6,
             "quantity": 1,
@@ -602,7 +622,7 @@ async def get_subscriptions(token_info: dict = Depends(verify_token)):
                 "notes_key_1" : "This is a test note"
             },
             "start_at": int(datetime.datetime.now().timestamp()),
-            "end_at": int((datetime.datetime.now() + datetime.timedelta(days=30)).timestamp()),
+           
         }
         
         subscription_response = subscription.create(subscription_data)
