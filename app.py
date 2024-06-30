@@ -598,34 +598,29 @@ async def get_subscriptions(token_info: dict = Depends(verify_token)):
         # check if customer id exists in the database
         customer_ref = db.collection('users').document(token_info['sub'])
         customer_data = customer_ref.get()
-        # check if customer_merchant_id exists in the database
-        customer_merchant_id = customer_data.to_dict().get('customer_merchant_id', None)
-        if not customer_merchant_id:
-            # create a customer in razorpay
-            customer_details = customer.create(data={
-                "name": customer_data.to_dict().get('username', None),
-                "email": customer_data.to_dict().get('email', None),
-                "fail_existing": 0
-            })
-            customer_merchant_id = customer_details['id']
-
-            customer_ref.update({
-                'customer_merchant_id': customer_merchant_id
-            })
+        
 
         subscription_data = {
-            "customer_id": customer_merchant_id,
             "plan_id": PLAN_ID,
             "total_count":6,
             "quantity": 1,
-            "notes": {
-                "notes_key_1" : "This is a test note"
+            "notify_info" : {
+                "notify_email" : customer_data.to_dict()['email']
             },
-            "start_at": int(datetime.datetime.now().timestamp()),
+            # make expire_by 10 mins from now
+            "expire_by" : int(datetime.datetime.now().timestamp()) + 600
            
         }
         
         subscription_response = subscription.create(subscription_data)
+
+        # save the subscription id in the database
+        db.collection('subscriptions').add({
+            'subscription_id': subscription_response['id'],
+            'customer_id': token_info['sub'],
+            'created_at': google_firestore.SERVER_TIMESTAMP,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
 
         return subscription_response
     
@@ -633,6 +628,46 @@ async def get_subscriptions(token_info: dict = Depends(verify_token)):
         logging.error("Error getting subscriptions: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
+@app.get("/v1/fetch_subscription", tags=["Subscription Endpoints"])
+async def fetch_subscription(token_info: dict = Depends(verify_token)):
+    """Fetch the subscription for the user."""
+    try:
+        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
+        subscription_list = [doc.to_dict() for doc in subscription_ref]
+
+        if subscription_list:
+            # Sort the subscription data by updated_at
+            sorted_subscription_list = sorted(subscription_list, key=lambda x: x['updated_at'], reverse=True)
+            sorted_subscription_info = [
+                {
+                    "subscription_id": sub["subscription_id"],
+                    "created_at": sub["created_at"],
+                    "updated_at": sub["updated_at"]
+                }
+                for sub in sorted_subscription_list
+            ]
+            return sorted_subscription_info
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Subscription not found",
+            )
+    except Exception as e:
+        logging.error("Error fetching subscription: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.get("/v1/subscriptions/{subscription_id}/status", tags=["Subscription Endpoints"])
+async def get_subscription_status(subscription_id: str, token_info: dict = Depends(verify_token)):
+    """Get the subscription status for the user."""
+    try:
+        subscription_data = subscription.fetch(subscription_id)
+        # return the current status of the subscription
+        status = subscription_data['status']
+        return {"status": status}
+
+    except Exception as e:
+        logging.error("Error getting subscription status: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 if __name__ == "__main__":
