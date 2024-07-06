@@ -38,6 +38,7 @@ import uvicorn
 import razorpay
 from razorpay.resources.subscription import Subscription
 from razorpay.resources.customer import Customer
+from razorpay.resources.plan import Plan
 
 
 dotenv.load_dotenv()
@@ -133,6 +134,9 @@ class ChatByIdHistory(BaseModel):
     updated_at: datetime.datetime
     regenerate_message: bool
     model: str
+
+class SubscriptionRequest(BaseModel):
+    redirect_url: str
 
 model_company_mapping = {
     "gpt-3.5-turbo": ChatOpenAI,
@@ -590,11 +594,12 @@ async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
-@app.get("/v1/subscriptions", tags=["Subscription Endpoints"])
-async def get_subscriptions(token_info: dict = Depends(verify_token)):
+@app.post("/v1/subscriptions", tags=["Subscription Endpoints"])
+async def get_subscriptions(request: SubscriptionRequest, token_info: dict = Depends(verify_token)):
     """Get the subscriptions for the user."""
     # create a subscription object using customer id as token_info['sub'] and plan id as PLAN_ID
     try:
+        
         # check if customer id exists in the database
         customer_ref = db.collection('users').document(token_info['sub'])
         customer_data = customer_ref.get()
@@ -606,6 +611,9 @@ async def get_subscriptions(token_info: dict = Depends(verify_token)):
             "quantity": 1,
             "notify_info" : {
                 "notify_email" : customer_data.to_dict()['email']
+            },
+            "notes": {
+                "redirect_url": request.redirect_url
             },
             # make expire_by 10 mins from now
             "expire_by" : int(datetime.datetime.now().timestamp()) + 600
@@ -667,6 +675,26 @@ async def get_subscription_status(subscription_id: str, token_info: dict = Depen
 
     except Exception as e:
         logging.error("Error getting subscription status: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.get("/v1/plans", tags=["Subscription Endpoints"])
+async def get_plans(token_info: dict = Depends(verify_token)):
+    """Get the plans for the user."""
+    try:
+        # fetch the plan details using PLAN_ID
+        plan = Plan(client).fetch(PLAN_ID)
+        # convert plan amount to float by dividing by 100
+        amount = plan['item']['amount'] / 100
+
+        plan_response = {
+            "plan_id": plan['id'],
+            "name": plan['item']['name'],
+            "amount": amount,
+            "currency": plan['item']['currency'],
+        }
+        return plan_response
+    except Exception as e:
+        logging.error("Error getting plans: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
