@@ -139,33 +139,114 @@ class SubscriptionRequest(BaseModel):
     redirect_url: str
 
 model_company_mapping = {
-    "gpt-3.5-turbo": ChatOpenAI,
-    "gpt-4-turbo-preview": ChatOpenAI,
-    "gpt-4": ChatOpenAI,
-    "gpt-4o": ChatOpenAI,
-    "claude-3-opus-20240229" : ChatAnthropic,
-    "claude-3-sonnet-20240229" : ChatAnthropic,
-    "claude-3-haiku-20240307" : ChatAnthropic,
-    "mistral-tiny-2312": ChatMistralAI,
-    "mistral-small-2312": ChatMistralAI,
-    "mistral-small-2402": ChatMistralAI,
-    "mistral-medium-2312": ChatMistralAI,
-    "mistral-large-2402": ChatMistralAI,
-    "gemini-1.0-pro": ChatGoogleGenerativeAI,
-    "gemini-1.5-flash-latest": ChatGoogleGenerativeAI,
-    "gemini-1.5-pro-latest": ChatGoogleGenerativeAI,
-    "sonar-small-chat": ChatPerplexity,
-    "sonar-small-online": ChatPerplexity,
-    "sonar-medium-chat" : ChatPerplexity,
-    "sonar-medium-online" : ChatPerplexity,
-    "codellama/CodeLlama-34b-Instruct-hf": ChatTogether,
-    "codellama/CodeLlama-70b-Instruct-hf": ChatTogether,
-    "meta-llama/Llama-2-13b-chat-hf": ChatTogether,
-    "meta-llama/Llama-2-70b-chat-hf": ChatTogether,
-    "meta-llama/Llama-3-8b-chat-hf" : ChatTogether,
-    "meta-llama/Llama-3-70b-chat-hf": ChatTogether,
-    "google/gemma-2b-it": ChatTogether,
-    "google/gemma-7b-it": ChatTogether,
+    "gpt-3.5-turbo": {
+        "model" : ChatOpenAI,
+        "premium" : False,
+    },
+    "gpt-4-turbo-preview": {
+        "model" : ChatOpenAI,
+        "premium" : True,
+    },
+    "gpt-4": {
+        "model" : ChatOpenAI,
+        "premium" : True,
+    },
+    "gpt-4o": {
+        "model" : ChatOpenAI,
+        "premium" : True,
+    },
+    "claude-3-opus-20240229" : {
+        "model" : ChatAnthropic,
+        "premium" : True,
+    },
+    "claude-3-sonnet-20240229" : {
+        "model" : ChatAnthropic,
+        "premium" : True,
+    },
+    "claude-3-haiku-20240307" : {
+        "model" : ChatAnthropic,
+        "premium" : False,
+    },
+    "mistral-tiny-2312": {
+        "model" : ChatMistralAI,
+        "premium" : False,
+    },
+    "mistral-small-2312": {
+        "model" : ChatMistralAI,
+        "premium" : False,
+    },
+    "mistral-small-2402": {
+        "model" : ChatMistralAI,
+        "premium" : False,
+    },
+    "mistral-medium-2312": {
+        "model" : ChatMistralAI,
+        "premium" : True,
+    },
+    "mistral-large-2402": {
+        "model" : ChatMistralAI,
+        "premium" : True,
+    },
+    "gemini-1.0-pro": {
+        "model" : ChatGoogleGenerativeAI,
+        "premium" : False,
+    },
+    "gemini-1.5-flash-latest": {
+        "model" : ChatGoogleGenerativeAI,
+        "premium" : False,
+    },
+    "gemini-1.5-pro-latest": {
+        "model" : ChatGoogleGenerativeAI,
+        "premium" : True,
+    },
+    "sonar-small-chat": {
+        "model" : ChatPerplexity,
+        "premium" : False,
+    },
+    "sonar-small-online": {
+        "model" : ChatPerplexity,
+        "premium" : True,
+    },
+    "sonar-medium-chat" : {
+        "model" : ChatPerplexity,
+        "premium" : False,
+    },
+    "sonar-medium-online" : {
+        "model" : ChatPerplexity,
+        "premium" : True,
+    },
+    "codellama/CodeLlama-34b-Instruct-hf": {
+        "model" : ChatTogether,
+        "premium" : False,
+    },
+    "codellama/CodeLlama-70b-Instruct-hf": {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "meta-llama/Llama-2-13b-chat-hf": {
+        "model" : ChatTogether,
+        "premium" : False,
+    },
+    "meta-llama/Llama-2-70b-chat-hf": {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "meta-llama/Llama-3-8b-chat-hf" : {
+        "model" : ChatTogether,
+        "premium" : False,
+    },
+    "meta-llama/Llama-3-70b-chat-hf": {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "google/gemma-2b-it": {
+        "model" : ChatTogether,
+        "premium" : False,
+    },
+    "google/gemma-7b-it": {
+        "model" : ChatTogether,
+        "premium" : False,
+    },
 }
 
 
@@ -317,6 +398,24 @@ async def verify_google_token(background_tasks: BackgroundTasks, credentials: HT
         )
 
 
+def verify_active_subscription(token_info: dict = Depends(verify_google_token)):
+    """Verify the active subscription for the user."""
+
+    # check if the customer has a subscription
+    subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
+
+    # check if the customer has an active subscription
+    for doc in subscription_ref:
+        subscription_data = doc.to_dict()
+        subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
+        if subscription_status == 'active':
+            return True
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Forbidden",
+    )
+
 @app.get("/auth/google", response_model=dict, tags=["Authentication Endpoints"])
 async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
@@ -349,54 +448,56 @@ async def verify_token_info(token_info: dict = Depends(verify_token)):
     return {"token_info": token_info}
 
 
-@app.post("/v1/chat", response_model=ChatResponse, tags=["AI Endpoints"])
-async def chat_conversation(request: ChatRequest, token_info: dict = Depends(verify_token)):
-    """Chat endpoint for the OpenAI chatbot."""
-    try:
-        # Get the chat model from the request and create the corresponding chat instance
-        chat_model = request.chat_model
-        chat = model_company_mapping.get(chat_model)
-        if chat is None:
-            raise ValueError(f"Invalid chat model: {chat_model}")
+
+
+# @app.post("/v1/chat", response_model=ChatResponse, tags=["AI Endpoints"])
+# async def chat_conversation(request: ChatRequest, token_info: dict = Depends(verify_token)):
+#     """Chat endpoint for the OpenAI chatbot."""
+#     try:
+#         # Get the chat model from the request and create the corresponding chat instance
+#         chat_model = request.chat_model
+#         chat = model_company_mapping.get(chat_model)
+#         if chat is None:
+#             raise ValueError(f"Invalid chat model: {chat_model}")
         
-        print("Chat model: ", chat_model)
+#         print("Chat model: ", chat_model)
 
         
-        # Create the chat prompt and memory for the conversation
-        chat = chat(
-            model_name=chat_model,
-            model=chat_model,
-            temperature=request.temperature,
-        )
+#         # Create the chat prompt and memory for the conversation
+#         chat = chat(
+#             model_name=chat_model,
+#             model=chat_model,
+#             temperature=request.temperature,
+#         )
 
 
-        prompt = ChatPromptTemplate(
-            messages=[
-                # SystemMessagePromptTemplate.from_template(""),
-                MessagesPlaceholder(variable_name="chat_history"),
-                HumanMessagePromptTemplate.from_template("{user_input}"),
-            ]
-        )
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=False)
+#         prompt = ChatPromptTemplate(
+#             messages=[
+#                 # SystemMessagePromptTemplate.from_template(""),
+#                 MessagesPlaceholder(variable_name="chat_history"),
+#                 HumanMessagePromptTemplate.from_template("{user_input}"),
+#             ]
+#         )
+#         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+#         conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=False)
 
-        # Seed the chat history with the user's input from the request
-        for chat_history in request.chat_history:
-            memory.chat_memory.add_user_message(chat_history.user_message)
-            memory.chat_memory.add_ai_message(chat_history.ai_message)
+#         # Seed the chat history with the user's input from the request
+#         for chat_history in request.chat_history:
+#             memory.chat_memory.add_user_message(chat_history.user_message)
+#             memory.chat_memory.add_ai_message(chat_history.ai_message)
 
-        # Run the conversation.invoke method in a separate thread
-        response = conversation.invoke(input=request.user_input)
+#         # Run the conversation.invoke method in a separate thread
+#         response = conversation.invoke(input=request.user_input)
 
-        return ChatResponse(response=response["text"])
-    except ValidationError as ve:
-        # Handle validation errors specifically for better user feedback
-        logging.error("Validation error: %s", ve)
-        raise HTTPException(status_code=400, detail="Invalid request data") from ve
-    except Exception as e:
-        # Log and handle generic exceptions gracefully
-        logging.error("Error processing chat request: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
+#         return ChatResponse(response=response["text"])
+#     except ValidationError as ve:
+#         # Handle validation errors specifically for better user feedback
+#         logging.error("Validation error: %s", ve)
+#         raise HTTPException(status_code=400, detail="Invalid request data") from ve
+#     except Exception as e:
+#         # Log and handle generic exceptions gracefully
+#         logging.error("Error processing chat request: %s", e)
+#         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 @app.post("/v1/chat_event_streaming", tags=["AI Endpoints"])
 async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(verify_token)):
@@ -404,13 +505,19 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
     try:
         # Get the chat model from the request and create the corresponding chat instance
         chat_model = request.chat_model
-        chat = model_company_mapping.get(chat_model)
-        if chat is None:
+        chat_config = model_company_mapping.get(chat_model)
+
+        if not chat_config:
             raise ValueError(f"Invalid chat model: {chat_model}")
-    
+
+        if chat_config['premium'] == True:
+            if not verify_active_subscription(token_info):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden",
+                )
         
-        # Create the chat prompt and memory for the conversation
-        chat = chat(
+        chat = chat_config['model'](
             model_name=chat_model,
             model=chat_model,
             temperature=request.temperature,
@@ -603,7 +710,21 @@ async def get_subscriptions(request: SubscriptionRequest, token_info: dict = Dep
         # check if customer id exists in the database
         customer_ref = db.collection('users').document(token_info['sub'])
         customer_data = customer_ref.get()
-        
+
+        # check if the customer has a subscription
+        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
+
+        # check if the customer has an active subscription
+        for doc in subscription_ref:
+            subscription_data = doc.to_dict()
+            print(subscription_data['subscription_id'])
+            subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
+            if subscription_status == 'active':
+                # return the 400 status code with message
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Subscription already exists",
+                )
 
         subscription_data = {
             "plan_id": PLAN_ID,
@@ -631,6 +752,10 @@ async def get_subscriptions(request: SubscriptionRequest, token_info: dict = Dep
         })
 
         return subscription_response
+
+
+    except HTTPException as e:
+        raise e
     
     except Exception as e:
         logging.error("Error getting subscriptions: %s", e)
