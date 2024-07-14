@@ -21,6 +21,7 @@ import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlansModal } from "../components/PlansModal";
+import { Chip } from "@nextui-org/react";
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
@@ -46,6 +47,7 @@ export const DashboardV2 = () => {
     const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
     const chatWindowRef = useRef(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
+    const [isPlusSubscriber, setIsPlusSubscriber] = useState(false);
 
     const limitSentence = (sentence) => {
         // limit chat title to 30 characters
@@ -338,6 +340,29 @@ export const DashboardV2 = () => {
         }
     }, [chatIdParams]);
 
+    useEffect(() => {
+        // check if the user has a plus plan
+        const hasPlusSubscription = async () => {
+            try {
+                const response = await fetch(`${API_HOST}/v1/is_user_subscribed`, {
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    setIsPlusSubscriber(data.subscribed);
+                    console.log('User has Plus subscription:', data.subscribed);
+                }
+
+            } catch (error) {
+                console.error('Error fetching subscription status:', error);
+            }
+        }
+        hasPlusSubscription();
+    }, [accessToken]);
+
     return (
         <div className="grid grid-cols-12 h-screen dark:bg-zinc-900">
             {/* Sidebar */}
@@ -467,8 +492,16 @@ export const DashboardV2 = () => {
                             <Select
                                 className="w-52 md:w-full ml-4"
                                 selectedKeys={[selectedModel?.value]}
-                                onChange={(event) =>
-                                    setSelectedModel(modelOptions.find((model) => model.value === event.target.value))
+                                onChange={(event) => {
+                                        // check for plus subscription
+                                        let selectedModel = modelOptions.find((model) => model.value === event.target.value);
+                                        if (selectedModel.isPremium && !isPlusSubscriber) {
+                                            setModal('plans');
+                                            onOpen();
+                                        } else {
+                                            setSelectedModel(selectedModel)
+                                        }
+                                    }
                                 }
                                 label="Select model"
                                 startContent={selectedModel?.companyLogo}
@@ -478,6 +511,7 @@ export const DashboardV2 = () => {
                                         key={model.value}
                                         className="max-w-xs"
                                         startContent={model.companyLogo}
+                                        endContent={model.isPremium ? <Chip color="primary" size="sm">Plus</Chip> : null}
                                     >
                                         {model.label}
                                     </SelectItem>

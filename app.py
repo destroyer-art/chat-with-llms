@@ -510,7 +510,7 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
         if not chat_config:
             raise ValueError(f"Invalid chat model: {chat_model}")
 
-        if chat_config['premium'] == True:
+        if chat_config['premium']:
             if not verify_active_subscription(token_info):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -619,18 +619,22 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
     try:
         # Get the chat model from the request and create the corresponding chat instance
         chat_model = request.chat_model
-        chat = model_company_mapping.get(chat_model)
-        if chat is None:
-            raise ValueError(f"Invalid chat model: {chat_model}")
-        
-        print("Chat model: ", chat_model)
+        chat_config = model_company_mapping.get(chat_model)
 
+        if not chat_config:
+            raise ValueError(f"Invalid chat model: {chat_model}")
+
+        if chat_config['premium']:
+            if not verify_active_subscription(token_info):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Forbidden",
+                )
         
-        # Create the chat prompt and memory for the conversation
-        chat = chat(
+        chat = chat_config['model'](
             model_name=chat_model,
             model=chat_model,
-            temperature=0,
+            temperature=request.temperature,
         )
 
 
@@ -822,6 +826,24 @@ async def get_plans(token_info: dict = Depends(verify_token)):
         logging.error("Error getting plans: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
+@app.get("/v1/is_user_subscribed", tags=["Subscription Endpoints"])
+async def is_user_subscribed(token_info: dict = Depends(verify_token)):
+    """Check if the user is subscribed."""
+    try:
+        # check if the customer has a subscription
+        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
+
+        # check if the customer has an active subscription
+        for doc in subscription_ref:
+            subscription_data = doc.to_dict()
+            subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
+            if subscription_status == 'active':
+                return {"subscribed": True}
+        
+        return {"subscribed": False}
+    except Exception as e:
+        logging.error("Error checking if user is subscribed: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 if __name__ == "__main__":
     import uvicorn
