@@ -136,6 +136,7 @@ class ChatByIdHistory(BaseModel):
     model: str
 
 class SubscriptionRequest(BaseModel):
+    """Subscription request model for the subscription endpoint."""
     redirect_url: str
 
 model_company_mapping = {
@@ -150,6 +151,10 @@ model_company_mapping = {
     "gpt-4": {
         "model" : ChatOpenAI,
         "premium" : True,
+    },
+    "gpt-4o-mini" : {
+        "model" : ChatOpenAI,
+        "premium" : False,
     },
     "gpt-4o": {
         "model" : ChatOpenAI,
@@ -166,6 +171,10 @@ model_company_mapping = {
     "claude-3-haiku-20240307" : {
         "model" : ChatAnthropic,
         "premium" : False,
+    },
+    "claude-3-5-sonnet-20240620" : {
+        "model" : ChatAnthropic,
+        "premium" : True,
     },
     "mistral-tiny-2312": {
         "model" : ChatMistralAI,
@@ -236,6 +245,18 @@ model_company_mapping = {
         "premium" : False,
     },
     "meta-llama/Llama-3-70b-chat-hf": {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo" : {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo" : {
+        "model" : ChatTogether,
+        "premium" : True,
+    },
+    "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" : {
         "model" : ChatTogether,
         "premium" : True,
     },
@@ -846,7 +867,6 @@ async def is_user_subscribed(token_info: dict = Depends(verify_token)):
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 if __name__ == "__main__":
-    import uvicorn
 
     # Use multiprocessing for parallel request handling
     uvicorn.run(app, host="0.0.0.0", port=5000, log_level="info")

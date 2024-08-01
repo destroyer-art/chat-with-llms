@@ -35,7 +35,7 @@ export const DashboardV2 = () => {
     const [isLoadingGeneratingChat, setIsLoadingGeneratingChat] = useState(false);
     const accessToken = localStorage.getItem("accessToken");
     const [modal, setModal] = useState(null);
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
     const [messages, setMessages] = useState([]);
     let previousModel = null;
