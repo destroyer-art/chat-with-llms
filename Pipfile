@@ -24,6 +24,9 @@ langchain-mistralai = "==0.0.5"
 langchain = "==0.1.16"
 langchain-together = "*"
 razorpay = "*"
+anthropic = "*"
+transformers = "*"
+google-cloud-aiplatform = {extras = ["tokenization"], version = "*"}
 
 [dev-packages]
 
