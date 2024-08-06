@@ -41,7 +41,6 @@ from razorpay.resources.customer import Customer
 from razorpay.resources.plan import Plan
 import tiktoken
 from anthropic import Anthropic
-from transformers import AutoTokenizer
 from vertexai.preview import tokenization
 
 
@@ -791,11 +790,7 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
     """Chat endpoint for the OpenAI chatbot."""
     try:
         # Get the chat model from the request and create the corresponding chat instance
-        chat_model = request.chat_model
-        chat_config = model_company_mapping.get(chat_model)
-
-        if not chat_config:
-            raise ValueError(f"Invalid chat model: {chat_model}")
+        chat_config = model_company_mapping.get("gpt-4o-mini")
 
         if chat_config['premium']:
             if not verify_active_subscription(token_info):
@@ -805,8 +800,8 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
                 )
         
         chat = chat_config['model'](
-            model_name=chat_model,
-            model=chat_model,
+            model_name="gpt-4o-mini",
+            model="gpt-4o-mini",
             temperature=request.temperature,
         )
 
@@ -827,7 +822,7 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
             memory.chat_memory.add_ai_message(chat_history.ai_message)
 
         # Run the conversation.invoke method in a separate thread
-        response = conversation.invoke(input="Generate 5 words sentence title for the above chat. \n Note : do not show creativity")
+        response = conversation.invoke(input="Generate a concise and relevant 5-word title for the above chat based on the main topic discussed. Do not include any creative or ambiguous terms.")
 
         # clean the response of extra "" or /
         response["text"] = response["text"].replace('"', '').replace("/", "")

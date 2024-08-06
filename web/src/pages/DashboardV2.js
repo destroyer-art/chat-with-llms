@@ -48,6 +48,7 @@ export const DashboardV2 = () => {
     const chatWindowRef = useRef(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
     const [isPlusSubscriber, setIsPlusSubscriber] = useState(false);
+    const [freshChat, setFreshChat] = useState(true);
 
     const limitSentence = (sentence) => {
         // limit chat title to 30 characters
@@ -158,6 +159,7 @@ export const DashboardV2 = () => {
                     'Authorization': `Bearer ${accessToken}`,
                 },
                 body: JSON.stringify(requestData),
+                openWhenHidden: true, // Opt out of visibility handling
                 onopen(response) {
                     if (response.ok) {
                         console.info("Event source connection established");
@@ -205,7 +207,8 @@ export const DashboardV2 = () => {
                     setIsStreaming(false);
                     setShowRetry(true);
                     setIsLoadingGeneratingChat(false);
-                    if (messages.length === 0) {
+                    if (freshChat) {
+                        setFreshChat(false);
                         getTitle(userHistory, idChat);
                     }
                 },
@@ -215,6 +218,7 @@ export const DashboardV2 = () => {
                     setIsLoadingGeneratingChat(false);
                     setShowRetry(true);
                     setIsRequestFailed(true);
+                    throw error;
                 }
             });
         } catch (error) {
@@ -616,6 +620,19 @@ export const DashboardV2 = () => {
                     </div>
 
                     <div className="flex justify-center items-center flex-none px-4 sticky bottom-0">
+                    {isRequestFailed ? (
+              <div style={{ width: '30%' }}> {/* Container to control the width */}
+                <Button
+                  color="danger"
+                  variant="shadow"
+                  onClick={() => handleRetry(false)}
+                  className="w-full" // Make the button fill the container
+                  startContent={<AiOutlineReload />}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : (
                         <InputBar
                             className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
                             userInput={userInput}
@@ -634,7 +651,7 @@ export const DashboardV2 = () => {
                                 </Button>
                             }
                             onKeyDown={handleKeyPress}
-                        />
+                        /> )}
                     </div>
                 </div>
 
