@@ -574,6 +574,33 @@ def verify_active_subscription(token_info: dict = Depends(verify_google_token)):
         detail="Forbidden",
     )
 
+def get_generations(token_info: dict = Depends(verify_google_token)):
+    """Verify the number of generations left for the user."""
+    # check in user_generations collection for the user
+    user_generations_ref = db.collection('user_generations').document(token_info['sub'])
+    user_generations_data = user_generations_ref.get()
+    if user_generations_data.exists:
+        user_generations_data = user_generations_data.to_dict()
+        return user_generations_data['remaining_generations']
+    else:
+        # create a new document for the user with the remaining generations
+        user_generations_ref.set({
+            'google_user_id': token_info['sub'],
+            'remaining_generations': 30,
+            'created_at': google_firestore.SERVER_TIMESTAMP,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
+        return 30
+
+def update_generations_left(token_info: dict = Depends(verify_google_token), generations_left: int = 30):
+    """Update the number of generations left for the user."""
+    user_generations_ref = db.collection('user_generations').document(token_info['sub'])
+    user_generations_ref.update({
+        'remaining_generations': generations_left - 1,
+        'updated_at': google_firestore.SERVER_TIMESTAMP,
+    })
+
+
 @app.get("/auth/google", response_model=dict, tags=["Authentication Endpoints"])
 async def google_auth(idinfo: dict = Depends(verify_google_token)):
     """Google authentication endpoint to verify the Google ID token."""
@@ -606,57 +633,6 @@ async def verify_token_info(token_info: dict = Depends(verify_token)):
     return {"token_info": token_info}
 
 
-
-
-# @app.post("/v1/chat", response_model=ChatResponse, tags=["AI Endpoints"])
-# async def chat_conversation(request: ChatRequest, token_info: dict = Depends(verify_token)):
-#     """Chat endpoint for the OpenAI chatbot."""
-#     try:
-#         # Get the chat model from the request and create the corresponding chat instance
-#         chat_model = request.chat_model
-#         chat = model_company_mapping.get(chat_model)
-#         if chat is None:
-#             raise ValueError(f"Invalid chat model: {chat_model}")
-        
-#         print("Chat model: ", chat_model)
-
-        
-#         # Create the chat prompt and memory for the conversation
-#         chat = chat(
-#             model_name=chat_model,
-#             model=chat_model,
-#             temperature=request.temperature,
-#         )
-
-
-#         prompt = ChatPromptTemplate(
-#             messages=[
-#                 # SystemMessagePromptTemplate.from_template(""),
-#                 MessagesPlaceholder(variable_name="chat_history"),
-#                 HumanMessagePromptTemplate.from_template("{user_input}"),
-#             ]
-#         )
-#         memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-#         conversation = LLMChain(llm=chat, memory=memory, prompt=prompt, verbose=False)
-
-#         # Seed the chat history with the user's input from the request
-#         for chat_history in request.chat_history:
-#             memory.chat_memory.add_user_message(chat_history.user_message)
-#             memory.chat_memory.add_ai_message(chat_history.ai_message)
-
-#         # Run the conversation.invoke method in a separate thread
-#         response = conversation.invoke(input=request.user_input)
-
-#         return ChatResponse(response=response["text"])
-#     except ValidationError as ve:
-#         # Handle validation errors specifically for better user feedback
-#         logging.error("Validation error: %s", ve)
-#         raise HTTPException(status_code=400, detail="Invalid request data") from ve
-#     except Exception as e:
-#         # Log and handle generic exceptions gracefully
-#         logging.error("Error processing chat request: %s", e)
-#         raise HTTPException(status_code=500, detail="Internal server error") from e
-
 @app.post("/v1/chat_event_streaming", tags=["AI Endpoints"])
 async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(verify_token)):
     """Chat Event Streaming endpoint for the OpenAI chatbot."""
@@ -674,6 +650,14 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail="Forbidden",
                 )
+        
+        # check the number of generations left for the user
+        generations_left = get_generations(token_info)
+        if generations_left == 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Generations limit exceeded",
+            )
         
         chat = chat_config['model'](
             model_name=chat_model,
@@ -728,6 +712,9 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
                 # Database update after streaming is completed
                 chat_id = add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message, stats)
 
+                # update the remaining generations for the user
+                update_generations_left(token_info, generations_left)
+
                 response = ChatEventStreaming(event="stream", data="", is_final=True, chat_id=chat_id)
                 yield f"data: {json.dumps(jsonable_encoder(response))}\n\n"
             except uvicorn.protocols.utils.ClientDisconnected:
@@ -741,9 +728,24 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
         # Handle validation errors specifically for better user feedback
         logging.error("Validation error: %s", ve)
         raise HTTPException(status_code=400, detail="Invalid request data") from ve
+    except HTTPException as he:
+        # Handle HTTP exceptions specifically for better user feedback
+        raise he
     except Exception as e:
         # Log and handle generic exceptions gracefully
         logging.error("Error processing chat request: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
+
+@app.get("/v1/generations", tags=["AI Endpoints"])
+async def get_generations_left(token_info: dict = Depends(verify_token)):
+    """Get the number of generations left for the user."""
+    try:
+        generations_left = get_generations(token_info)
+        return {"generations_left": generations_left}
+    except Exception as e:
+        logging.error("Error processing generations request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 # chat history of the user
@@ -1012,6 +1014,12 @@ async def is_user_subscribed(token_info: dict = Depends(verify_token)):
     except Exception as e:
         logging.error("Error checking if user is subscribed: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
+
+
+
+
+
+
 
 if __name__ == "__main__":
 

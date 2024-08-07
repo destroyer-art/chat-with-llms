@@ -21,7 +21,6 @@ import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlansModal } from "../components/PlansModal";
-import { Chip } from "@nextui-org/react";
 
 export const DashboardV2 = () => {
     const { chatIdParams } = useParams();
@@ -47,8 +46,8 @@ export const DashboardV2 = () => {
     const [isRequestFailed, setIsRequestFailed] = useState(false); // New state for request failed
     const chatWindowRef = useRef(null);
     const { isOpen, onOpen, onClose } = useDisclosure();
-    const [isPlusSubscriber, setIsPlusSubscriber] = useState(false);
     const [freshChat, setFreshChat] = useState(true);
+    const [generationsLeft, setGenerationsLeft] = useState(0);
 
     const limitSentence = (sentence) => {
         // limit chat title to 30 characters
@@ -211,6 +210,7 @@ export const DashboardV2 = () => {
                         setFreshChat(false);
                         getTitle(userHistory, idChat);
                     }
+                    setGenerationsLeft((prevGenerationsLeft) => prevGenerationsLeft - 1);
                 },
                 onerror(error) {
                     console.error("Event source connection error: ", error);
@@ -345,26 +345,23 @@ export const DashboardV2 = () => {
     }, [chatIdParams]);
 
     useEffect(() => {
-        // check if the user has a plus plan
-        const hasPlusSubscription = async () => {
+        // get the number of generations left
+        const getGenerationsLeft = async () => {
             try {
-                const response = await fetch(`${API_HOST}/v1/is_user_subscribed`, {
+                const response = await fetch(`${API_HOST}/v1/generations`, {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
                     },
                 });
-
                 if (response.ok) {
                     const data = await response.json();
-                    setIsPlusSubscriber(data.subscribed);
-                    console.log('User has Plus subscription:', data.subscribed);
+                    setGenerationsLeft(data.generations_left);
                 }
-
             } catch (error) {
-                console.error('Error fetching subscription status:', error);
+                console.error('Error fetching generations left:', error);
             }
         }
-        hasPlusSubscription();
+        getGenerationsLeft();
     }, [accessToken]);
 
     return (
@@ -499,12 +496,7 @@ export const DashboardV2 = () => {
                                 onChange={(event) => {
                                         // check for plus subscription
                                         let selectedModel = modelOptions.find((model) => model.value === event.target.value);
-                                        if (selectedModel.isPremium && !isPlusSubscriber) {
-                                            setModal('plans');
-                                            onOpen();
-                                        } else {
-                                            setSelectedModel(selectedModel)
-                                        }
+                                        setSelectedModel(selectedModel);
                                     }
                                 }
                                 label="Select model"
@@ -515,7 +507,6 @@ export const DashboardV2 = () => {
                                         key={model.value}
                                         className="max-w-xs"
                                         startContent={model.companyLogo}
-                                        endContent={model.isPremium ? <Chip color="primary" size="sm">Plus</Chip> : null}
                                     >
                                         {model.label}
                                     </SelectItem>
@@ -533,6 +524,10 @@ export const DashboardV2 = () => {
                                     />
                                 </DropdownTrigger>
                                 <DropdownMenu aria-label="Profile Actions" variant="flat">
+                                    <DropdownItem key="profile" className="h-14 gap-2">
+                                        <p className="font-semibold">{localStorage.getItem("username")}</p>
+                                        <p className="font-semibold">{generationsLeft} generations remaining</p>
+                                    </DropdownItem>
                                     <DropdownItem key="plans" startContent={<TbPremiumRights />} showDivider onPress={() => {
                                         setModal('plans');
                                         onOpen();
@@ -620,38 +615,38 @@ export const DashboardV2 = () => {
                     </div>
 
                     <div className="flex justify-center items-center flex-none px-4 sticky bottom-0">
-                    {isRequestFailed ? (
-              <div style={{ width: '30%' }}> {/* Container to control the width */}
-                <Button
-                  color="danger"
-                  variant="shadow"
-                  onClick={() => handleRetry(false)}
-                  className="w-full" // Make the button fill the container
-                  startContent={<AiOutlineReload />}
-                >
-                  Retry
-                </Button>
-              </div>
-            ) : (
-                        <InputBar
-                            className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
-                            userInput={userInput}
-                            setUserInput={setUserInput}
-                            endContent={
+                        {isRequestFailed ? (
+                            <div style={{ width: '30%' }}> {/* Container to control the width */}
                                 <Button
-                                    isIconOnly
-                                    variant="faded"
-                                    aria-label="Send"
-                                    onClick={() => {
-                                        onSend(userInput);
-                                    }}
-                                    isDisabled={isStreaming}
+                                    color="danger"
+                                    variant="shadow"
+                                    onClick={() => handleRetry(false)}
+                                    className="w-full" // Make the button fill the container
+                                    startContent={<AiOutlineReload />}
                                 >
-                                    <BsSendArrowUp />
+                                    Retry
                                 </Button>
-                            }
-                            onKeyDown={handleKeyPress}
-                        /> )}
+                            </div>
+                        ) : (
+                            <InputBar
+                                className="lg:max-w-3xl xl:max-w-4xl px-4 py-2"
+                                userInput={userInput}
+                                setUserInput={setUserInput}
+                                endContent={
+                                    <Button
+                                        isIconOnly
+                                        variant="faded"
+                                        aria-label="Send"
+                                        onClick={() => {
+                                            onSend(userInput);
+                                        }}
+                                        isDisabled={isStreaming}
+                                    >
+                                        <BsSendArrowUp />
+                                    </Button>
+                                }
+                                onKeyDown={handleKeyPress}
+                            />)}
                     </div>
                 </div>
 
