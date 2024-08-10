@@ -8,6 +8,7 @@ ARG REACT_APP_API_HOST
 # Use ARG values as environment variables for the build stage
 ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
 ENV REACT_APP_API_HOST=$REACT_APP_API_HOST
+ENV REACT_APP_RAZOR_PAY_KEY_ID=$REACT_APP_RAZOR_PAY_KEY_ID
 
 # Create a directory for our application in the container 
 RUN mkdir -p /usr/src/app
