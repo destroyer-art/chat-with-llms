@@ -58,7 +58,8 @@ jobs:
         run: |
           docker build -t chat-with-llms-frontend:latest ./web \
             --build-arg REACT_APP_GOOGLE_CLIENT_ID=${{ secrets.REACT_APP_GOOGLE_CLIENT_ID }} \
-            --build-arg REACT_APP_API_HOST=${{ secrets.REACT_APP_API_HOST }}
+            --build-arg REACT_APP_API_HOST=${{ secrets.REACT_APP_API_HOST }} \
+            --build-arg REACT_APP_RAZOR_PAY_KEY_ID=${{ secrets.REACT_APP_RAZOR_PAY_KEY_ID }}
           
       - name: Configure GCP Credentials
         if: github.ref == 'refs/heads/main'
