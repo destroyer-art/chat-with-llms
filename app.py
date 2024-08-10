@@ -39,9 +39,12 @@ import razorpay
 from razorpay.resources.subscription import Subscription
 from razorpay.resources.customer import Customer
 from razorpay.resources.plan import Plan
+from razorpay.resources.order import Order
 import tiktoken
 from anthropic import Anthropic
 from vertexai.preview import tokenization
+import hmac
+import hashlib
 
 
 
@@ -130,8 +133,6 @@ class ChatUserHistory(BaseModel):
     chat_model: str
     created_at: datetime.datetime
     updated_at: datetime.datetime
-
-
 class ChatByIdHistory(BaseModel):
     """Chat by id history model for the chat by id endpoint."""
     ai_message: str
@@ -140,6 +141,12 @@ class ChatByIdHistory(BaseModel):
     updated_at: datetime.datetime
     regenerate_message: bool
     model: str
+
+class PaymentRequest(BaseModel):
+    """Payment request model for the payment endpoint."""
+    razorpay_order_id: str
+    razorpay_payment_id: str
+    razorpay_signature: str
 
 class SubscriptionRequest(BaseModel):
     """Subscription request model for the subscription endpoint."""
@@ -1016,9 +1023,128 @@ async def is_user_subscribed(token_info: dict = Depends(verify_token)):
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+@app.post("/v1/create_order", tags=["Order Endpoints"])
+async def create_order(plan_id: str, token_info: dict = Depends(verify_token)):
+    """Create an order for the user."""
+    try:
+        amount = 0
+        if plan_id == 'plan_50':
+            amount = 420  
+        elif plan_id == 'plan_250':
+            amount = 840  
+        elif plan_id == 'plan_500':
+            amount = 1680
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid plan id",
+            )
+
+        order_data = {
+            "amount" : amount*100,
+            "currency" : "INR",
+            "receipt": plan_id,
+        }
+
+    
+        order = Order(client).create(order_data)
+        # save the order into the orders collection
+        db.collection('orders').add({
+            'order_id': order['id'],
+            'plan_id': plan_id,
+            'customer_id': token_info['sub'],
+            'created_at': google_firestore.SERVER_TIMESTAMP,
+            'updated_at': google_firestore.SERVER_TIMESTAMP,
+        })
+
+        response = {
+            "order_id": order['id'],
+            "amount": amount,
+            "currency": "INR",
+            "receipt": plan_id,
+        }
+
+        # only return the order id
+        return response
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error("Error creating order: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
+@app.post("/v1/verify_payment", tags=["Order Endpoints"])
+async def verify_payment(request: PaymentRequest, token_info: dict = Depends(verify_token)):
+    """Verify the payment for the user."""
+    try:
+        # first check if the payment_id exists in the payments collection
+        payment_ref = db.collection('payments').where('payment_id', '==', request.razorpay_payment_id).stream()
+        payment_data = next(payment_ref, None)
 
+        if payment_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment already exists",
+            )
+
+        # verify the razorpay_signature
+        generated_signature = hmac.new(
+            RAZORPAY_KEY_SECRET.encode('utf-8'),
+            f"{request.razorpay_order_id}|{request.razorpay_payment_id}".encode('utf-8'),
+            hashlib.sha256
+        ).hexdigest()
+
+        if generated_signature != request.razorpay_signature:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid signature",
+            )
+
+        order_data = Order(client).fetch(request.razorpay_order_id)
+        # check if the order is paid
+        if order_data['status'] == 'paid':
+            
+            db.collection('payments').add({
+                'order_id': request.razorpay_order_id,
+                'payment_id': request.razorpay_payment_id,
+                'customer_id': token_info['sub'],
+                'created_at': google_firestore.SERVER_TIMESTAMP,
+                'updated_at': google_firestore.SERVER_TIMESTAMP,
+            })
+
+            print(order_data)
+
+            # get the current remaining generations for the user
+            generations_left = get_generations(token_info)
+
+            # update user_generations collection by adding the remaining generations
+            if order_data['receipt'] == 'plan_50':
+                db.collection('user_generations').document(token_info['sub']).update({
+                    'remaining_generations': 50 + generations_left,
+                    'updated_at': google_firestore.SERVER_TIMESTAMP,
+                })
+            elif order_data['receipt'] == 'plan_250':
+                db.collection('user_generations').document(token_info['sub']).update({
+                    'remaining_generations': 250 + generations_left,
+                    'updated_at': google_firestore.SERVER_TIMESTAMP,
+                })
+            elif order_data['receipt'] == 'plan_500':
+                db.collection('user_generations').document(token_info['sub']).update({
+                    'remaining_generations': 500 + generations_left,
+                    'updated_at': google_firestore.SERVER_TIMESTAMP,
+                })
+
+            return {"status": "success"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Payment failed",
+            )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error("Error verifying payment: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
 if __name__ == "__main__":
