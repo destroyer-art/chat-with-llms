@@ -4,6 +4,7 @@ FROM node:21-alpine3.18
 # Accept environment variables passed as build arguments
 ARG REACT_APP_GOOGLE_CLIENT_ID
 ARG REACT_APP_API_HOST
+ARG REACT_APP_RAZOR_PAY_KEY_ID
 
 # Use ARG values as environment variables for the build stage
 ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
