@@ -76,7 +76,7 @@ def get_environment_variable(key):
 
 RAZORPAY_KEY_ID = get_environment_variable("RAZOR_PAY_KEY_ID")
 RAZORPAY_KEY_SECRET = get_environment_variable("RAZOR_PAY_KEY_SECRET")
-PLAN_ID = get_environment_variable("PLAN_ID")
+ENABLE_PAYMENT = get_environment_variable("ENABLE_PAYMENT") == "True"
 
 # Initialize a Firestore client with a specific service account key file
 if get_environment_variable("ENVIRONMENT") == "dev":
@@ -148,9 +148,6 @@ class PaymentRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_signature: str
 
-class SubscriptionRequest(BaseModel):
-    """Subscription request model for the subscription endpoint."""
-    redirect_url: str
 
 model_company_mapping = {
     "gpt-3.5-turbo": {
@@ -563,23 +560,6 @@ async def verify_google_token(background_tasks: BackgroundTasks, credentials: HT
         )
 
 
-def verify_active_subscription(token_info: dict = Depends(verify_google_token)):
-    """Verify the active subscription for the user."""
-
-    # check if the customer has a subscription
-    subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
-
-    # check if the customer has an active subscription
-    for doc in subscription_ref:
-        subscription_data = doc.to_dict()
-        subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
-        if subscription_status == 'active':
-            return True
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="Forbidden",
-    )
 
 def get_generations(token_info: dict = Depends(verify_google_token)):
     """Verify the number of generations left for the user."""
@@ -650,13 +630,6 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
 
         if not chat_config:
             raise ValueError(f"Invalid chat model: {chat_model}")
-
-        if chat_config['premium']:
-            if not verify_active_subscription(token_info):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Forbidden",
-                )
         
         # check the number of generations left for the user
         generations_left = get_generations(token_info)
@@ -882,151 +855,18 @@ async def chat_by_id(chat_id: str, token_info: dict = Depends(verify_token)):
         logging.error("Error processing chat request: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
-@app.post("/v1/subscriptions", tags=["Subscription Endpoints"])
-async def get_subscriptions(request: SubscriptionRequest, token_info: dict = Depends(verify_token)):
-    """Get the subscriptions for the user."""
-    # create a subscription object using customer id as token_info['sub'] and plan id as PLAN_ID
-    try:
-        
-        # check if customer id exists in the database
-        customer_ref = db.collection('users').document(token_info['sub'])
-        customer_data = customer_ref.get()
-
-        # check if the customer has a subscription
-        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
-
-        # check if the customer has an active subscription
-        for doc in subscription_ref:
-            subscription_data = doc.to_dict()
-            print(subscription_data['subscription_id'])
-            subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
-            if subscription_status == 'active':
-                # return the 400 status code with message
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Subscription already exists",
-                )
-
-        subscription_data = {
-            "plan_id": PLAN_ID,
-            "total_count":6,
-            "quantity": 1,
-            "notify_info" : {
-                "notify_email" : customer_data.to_dict()['email']
-            },
-            "notes": {
-                "redirect_url": request.redirect_url
-            },
-            # make expire_by 10 mins from now
-            "expire_by" : int(datetime.datetime.now().timestamp()) + 600
-           
-        }
-        
-        subscription_response = subscription.create(subscription_data)
-
-        # save the subscription id in the database
-        db.collection('subscriptions').add({
-            'subscription_id': subscription_response['id'],
-            'customer_id': token_info['sub'],
-            'created_at': google_firestore.SERVER_TIMESTAMP,
-            'updated_at': google_firestore.SERVER_TIMESTAMP,
-        })
-
-        return subscription_response
-
-
-    except HTTPException as e:
-        raise e
-    
-    except Exception as e:
-        logging.error("Error getting subscriptions: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
-
-@app.get("/v1/fetch_subscription", tags=["Subscription Endpoints"])
-async def fetch_subscription(token_info: dict = Depends(verify_token)):
-    """Fetch the subscription for the user."""
-    try:
-        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
-        subscription_list = [doc.to_dict() for doc in subscription_ref]
-
-        if subscription_list:
-            # Sort the subscription data by updated_at
-            sorted_subscription_list = sorted(subscription_list, key=lambda x: x['updated_at'], reverse=True)
-            sorted_subscription_info = [
-                {
-                    "subscription_id": sub["subscription_id"],
-                    "created_at": sub["created_at"],
-                    "updated_at": sub["updated_at"]
-                }
-                for sub in sorted_subscription_list
-            ]
-            return sorted_subscription_info
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Subscription not found",
-            )
-    except Exception as e:
-        logging.error("Error fetching subscription: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
-
-@app.get("/v1/subscriptions/{subscription_id}/status", tags=["Subscription Endpoints"])
-async def get_subscription_status(subscription_id: str, token_info: dict = Depends(verify_token)):
-    """Get the subscription status for the user."""
-    try:
-        subscription_data = subscription.fetch(subscription_id)
-        # return the current status of the subscription
-        status = subscription_data['status']
-        return {"status": status}
-
-    except Exception as e:
-        logging.error("Error getting subscription status: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
-
-@app.get("/v1/plans", tags=["Subscription Endpoints"])
-async def get_plans(token_info: dict = Depends(verify_token)):
-    """Get the plans for the user."""
-    try:
-        # fetch the plan details using PLAN_ID
-        plan = Plan(client).fetch(PLAN_ID)
-        # convert plan amount to float by dividing by 100
-        amount = plan['item']['amount'] / 100
-
-        plan_response = {
-            "plan_id": plan['id'],
-            "name": plan['item']['name'],
-            "amount": amount,
-            "currency": plan['item']['currency'],
-        }
-        return plan_response
-    except Exception as e:
-        logging.error("Error getting plans: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
-
-@app.get("/v1/is_user_subscribed", tags=["Subscription Endpoints"])
-async def is_user_subscribed(token_info: dict = Depends(verify_token)):
-    """Check if the user is subscribed."""
-    try:
-        # check if the customer has a subscription
-        subscription_ref = db.collection('subscriptions').where('customer_id', '==', token_info['sub']).stream()
-
-        # check if the customer has an active subscription
-        for doc in subscription_ref:
-            subscription_data = doc.to_dict()
-            subscription_status = subscription.fetch(subscription_data['subscription_id'])['status']
-            if subscription_status == 'active':
-                return {"subscribed": True}
-        
-        return {"subscribed": False}
-    except Exception as e:
-        logging.error("Error checking if user is subscribed: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error") from e
-
 
 @app.post("/v1/create_order", tags=["Order Endpoints"])
 async def create_order(plan_id: str, token_info: dict = Depends(verify_token)):
     """Create an order for the user."""
     try:
+        if not ENABLE_PAYMENT:
+            raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Payment is disabled",
+            )
+
+
         amount = 0
         if plan_id == 'plan_50':
             amount = 420  
@@ -1076,7 +916,14 @@ async def create_order(plan_id: str, token_info: dict = Depends(verify_token)):
 @app.post("/v1/verify_payment", tags=["Order Endpoints"])
 async def verify_payment(request: PaymentRequest, token_info: dict = Depends(verify_token)):
     """Verify the payment for the user."""
+    
     try:
+        if not ENABLE_PAYMENT:
+            raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Payment is disabled",
+            )
+
         # first check if the payment_id exists in the payments collection
         payment_ref = db.collection('payments').where('payment_id', '==', request.razorpay_payment_id).stream()
         payment_data = next(payment_ref, None)

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, Button, Card, CardHeader, CardBody, CardFooter } from "@nextui-org/react";
-import { themes } from "prism-react-renderer";
 
 export const PlansModal = ({ isOpen, onClose }) => {
   const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
@@ -49,9 +48,14 @@ export const PlansModal = ({ isOpen, onClose }) => {
         },
       });
       const data = await response.json();
-      onClose(); // Close the parent modal
+      
+      if (data.status === 403) {
+        // create an alert that payments section is coming soon
+        alert("Payments Gateway is coming soon");
+        return;
+      }
 
-      console.log(data);
+      onClose(); // Close the parent modal
       
       // Configure Razorpay options
       const options = {

@@ -91,6 +91,11 @@ export const DashboardV2 = () => {
         }
     };
 
+
+    useEffect(() => {
+        console.log("Modal: ", modal);
+    }, [modal]);
+
     const getTitle = async (userHistory, chatId) => {
         try {
             const requestData = {
@@ -164,8 +169,16 @@ export const DashboardV2 = () => {
                         console.info("Event source connection established");
                         setIsStreaming(true);
                     } else {
-                        console.error("Failed to establish event source connection, status: ", response.status);
+                       
+                        if (response.status === 403){
+                            setGenerationsLeft(0);
+                            console.log("Generations left exhausted");
+                            // open the plans modal
+                            setModal('plans');
+                        }
                         setShowRetry(true);
+                        console.error("Failed to establish event source connection, status: ", response.status);
+                        throw new Error("Failed to establish event source connection");
                     }
                 },
                 onmessage(event) {
