@@ -457,7 +457,7 @@ export const DashboardV2 = () => {
             </div>
 
 
-            <div className={`${isSidebarOpen ? 'col-span-12 lg:col-span-10' : 'col-span-12'} flex flex-col h-screen overflow-y-auto md:ml-0 ml-auto`}>
+            <div className={`${isSidebarOpen ? 'col-span-12 lg:col-span-10' : 'col-span-12'} flex flex-col h-screen overflow-y-auto md:ml-0`}>
                 <div className="flex flex-col h-screen w-full">
                     {/* Navbar */}
                     <div className="flex justify-between items-center sticky top-0 h-16 px-2 z-10">
