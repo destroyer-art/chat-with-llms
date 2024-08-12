@@ -88,7 +88,7 @@ const PrivacyPolicy = () => {
             <p>
               You have the right to access, correct, or delete the personal
               information we hold about you. If you wish to exercise these
-              rights, please contact us at [Insert Contact Information].
+              rights, please contact us at support@chat-with-llms.com .
             </p>
           </section>
 
@@ -105,7 +105,7 @@ const PrivacyPolicy = () => {
             <h3 className="text-xl font-semibold">Contact Us</h3>
             <p>
               If you have any questions about this Privacy Policy, please
-              contact us at [Insert Contact Information].
+              contact us at support@chat-with-llms.com .
             </p>
           </section>
         </div>

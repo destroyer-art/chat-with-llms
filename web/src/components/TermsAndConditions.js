@@ -108,7 +108,7 @@ const TermsAndConditions = () => {
             <h3 className="text-xl font-semibold">Contact Information</h3>
             <p>
               If you have any questions about these Terms and Conditions, please
-              contact us at [Insert Contact Information].
+              contact us at support@chat-with-llms.com .
             </p>
           </section>
         </div>
