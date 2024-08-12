@@ -102,7 +102,7 @@ jobs:
           service_name: "chat-with-llms-backend"  # Replace with the name of your existing Cloud Run service
           image: "asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-backend/chat-with-llms-backend:latest"
           platform: "managed"
-          region: "asia-south1"
+          region: "asia-east1"
           service: "chat-with-llms-backend"
           port: 8080
 
@@ -126,6 +126,6 @@ jobs:
           service_name: "chat-with-llms-frontend"  # Replace with the name of your existing Cloud Run service
           image: "asia-south1-docker.pkg.dev/chat-with-llms-dcefd/chat-with-llms-frontend/chat-with-llms-frontend:latest"
           platform: "managed"
-          region: "asia-south1"
+          region: "asia-east1"
           service: "chat-with-llms-frontend"
           port: 3000
