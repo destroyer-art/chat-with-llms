@@ -67,10 +67,10 @@ export const LandingPageDescription = React.forwardRef((props, ref) => {
           <p className="text-sm text-gray-500 dark:text-gray-400">A versatile language model from Perplexity.</p>
           <Button className="justify-start" variant="link" onClick={async () => {
             const isVerified = await verifyGoogleAuth();
-            if (isVerified) navigate('/chat', { state: { userModel: "sonar-medium-online" } });
+            if (isVerified) navigate('/chat', { state: { userModel: "llama-3.1-sonar-large-128k-online" } });
 
             else {
-              model = "sonar-medium-online";
+              model = "llama-3.1-sonar-large-128k-online";
               login();
             }
           }}>

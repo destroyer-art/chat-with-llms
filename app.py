@@ -38,7 +38,6 @@ import uvicorn
 import razorpay
 from razorpay.resources.subscription import Subscription
 from razorpay.resources.customer import Customer
-from razorpay.resources.plan import Plan
 from razorpay.resources.order import Order
 import tiktoken
 from anthropic import Anthropic
@@ -164,13 +163,6 @@ model_company_mapping = {
         "input_token_cost_per_million": 10.0,
         "output_token_cost_per_million": 30.0
     },
-    "gpt-4": {
-        "model": ChatOpenAI,
-        "premium": True,
-        "company": "OpenAI",
-        "input_token_cost_per_million": 30.0,
-        "output_token_cost_per_million": 60.0
-    },
     "gpt-4o-mini": {
         "model": ChatOpenAI,
         "premium": False,
@@ -269,33 +261,61 @@ model_company_mapping = {
         "input_token_cost_per_million": 3.5,
         "output_token_cost_per_million": 10.5
     },
-    "sonar-small-chat": {
+    "llama-3-sonar-small-32k-online": {
         "model": ChatPerplexity,
         "premium": False,
         "company": "Perplexity",
         "input_token_cost_per_million": 0.2,
         "output_token_cost_per_million": 0.2
     },
-    "sonar-small-online": {
+    "llama-3-sonar-small-32k-chat": {
         "model": ChatPerplexity,
         "premium": True,
         "company": "Perplexity",
         "input_token_cost_per_million": 0.2,
         "output_token_cost_per_million": 0.2
     },
-    "sonar-medium-chat": {
+    "llama-3-sonar-large-32k-online": {
         "model": ChatPerplexity,
         "premium": False,
         "company": "Perplexity",
-        "input_token_cost_per_million": 0.6,
-        "output_token_cost_per_million": 0.6
+        "input_token_cost_per_million": 1,
+        "output_token_cost_per_million": 1
     },
-    "sonar-medium-online": {
+    "llama-3-sonar-large-32k-chat": {
         "model": ChatPerplexity,
         "premium": True,
         "company": "Perplexity",
-        "input_token_cost_per_million": 0.6,
-        "output_token_cost_per_million": 0.6
+        "input_token_cost_per_million": 1,
+        "output_token_cost_per_million": 1
+    },
+    "llama-3.1-sonar-small-128k-online": {
+        "model": ChatPerplexity,
+        "premium": True,
+        "company": "Perplexity",
+        "input_token_cost_per_million": 0.2,
+        "output_token_cost_per_million": 0.2
+    },
+    "llama-3.1-sonar-small-128k-chat": {
+        "model": ChatPerplexity,
+        "premium": True,
+        "company": "Perplexity",
+        "input_token_cost_per_million": 0.2,
+        "output_token_cost_per_million": 0.2
+    },
+    "llama-3.1-sonar-large-128k-online": {
+        "model": ChatPerplexity,
+        "premium": True,
+        "company": "Perplexity",
+        "input_token_cost_per_million": 1,
+        "output_token_cost_per_million": 1
+    },
+    "llama-3.1-sonar-large-128k-chat": {
+        "model": ChatPerplexity,
+        "premium": True,
+        "company": "Perplexity",
+        "input_token_cost_per_million": 1,
+        "output_token_cost_per_million": 1
     },
     "codellama/CodeLlama-34b-Instruct-hf": {
         "model": ChatTogether,
