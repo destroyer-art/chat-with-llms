@@ -5,7 +5,7 @@ export const useGoogleAuth = () => {
 
   const API_HOST = process.env.REACT_APP_API_HOST || 'http://localhost:5000';
 
-  const handleGoogleSuccess = async (tokenResponse) => {
+  const handleGoogleSuccess = async (tokenResponse, model="gpt-4o-mini") => {
 
     const idToken = tokenResponse.access_token;
 
@@ -24,7 +24,7 @@ export const useGoogleAuth = () => {
         localStorage.setItem('accessToken', accessToken);
         localStorage.setItem('profilePicture', profilePicture);
         localStorage.setItem('username', username);
-        navigate('/chat');
+        navigate('/chat', { state: { userModel: model } });
       } else {
         console.error('Google authentication failed');
       }

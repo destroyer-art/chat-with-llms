@@ -108,7 +108,6 @@ export const PlansModal = ({ isOpen, onClose }) => {
         body: JSON.stringify(paymentRequest),
       });
       const data = await response.json();
-      console.log(data);
     } catch (error) {
       console.error("Error:", error);
     }

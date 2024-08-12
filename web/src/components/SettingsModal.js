@@ -30,14 +30,12 @@ export const SettingsModal = ({ isOpen, onClose }) => {
   // Function to apply the theme to the document
   const applyTheme = (selectedTheme) => {
     const root = document.documentElement;
-    console.log(`Applying theme: ${selectedTheme}`);
   
     if (selectedTheme === 'dark') {
       root.classList.add('dark');
       root.classList.remove('light');
     } else if (selectedTheme === 'system') {
       const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      console.log(`System prefers dark: ${isSystemDark}`);
       if (isSystemDark) {
         root.classList.add('dark');
         root.classList.remove('light');

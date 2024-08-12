@@ -45,8 +45,8 @@ export const LandingPagePromotion = () => {
           </Button>
           <p className="text-xs text-gray-500 dark:text-gray-400">
             By signing in, you agree to our{" "}
-            <Link className="underline underline-offset-2" href="#">
-              Terms of Service
+            <Link className="underline underline-offset-2" to="/terms-and-conditions">
+              Terms And Conditions
             </Link>
             .
           </p>

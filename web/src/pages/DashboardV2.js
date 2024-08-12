@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { TbPremiumRights } from "react-icons/tb";
 import { LuPlus } from "react-icons/lu";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useLocation } from "react-router-dom";
 import { Tooltip, Spinner, Avatar, Button, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem, Select, SelectItem } from "@nextui-org/react";
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import { MdExpandMore } from "react-icons/md";
@@ -22,7 +22,12 @@ import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlansModal } from "../components/PlansModal";
 
+
 export const DashboardV2 = () => {
+    const location = useLocation();
+    const { userModel } = location.state || {};
+    
+
     const { chatIdParams } = useParams();
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
 
@@ -35,7 +40,7 @@ export const DashboardV2 = () => {
     const accessToken = localStorage.getItem("accessToken");
     const [modal, setModal] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(modelOptions[0]);
+    const [selectedModel, setSelectedModel] = useState( modelOptions.find((model) => model.value === userModel) || modelOptions[0]);
     const [messages, setMessages] = useState([]);
     let previousModel = null;
     let profilePicture = localStorage.getItem("profilePicture");
@@ -91,10 +96,6 @@ export const DashboardV2 = () => {
         }
     };
 
-
-    useEffect(() => {
-        console.log("Modal: ", modal);
-    }, [modal]);
 
     const getTitle = async (userHistory, chatId) => {
         try {
@@ -172,9 +173,9 @@ export const DashboardV2 = () => {
                        
                         if (response.status === 403){
                             setGenerationsLeft(0);
-                            console.log("Generations left exhausted");
                             // open the plans modal
                             setModal('plans');
+                            onOpen();
                         }
                         setShowRetry(true);
                         console.error("Failed to establish event source connection, status: ", response.status);

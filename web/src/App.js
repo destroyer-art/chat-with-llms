@@ -4,6 +4,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ProtectedPage } from "./pages/ProtectedPage";
 import { DashboardV2 } from "./pages/DashboardV2";
+import TermsAndConditions from "./components/TermsAndConditions";
+import PrivacyPolicy from "./components/PrivacyPolicy";
 
 
 
@@ -48,6 +50,12 @@ function App() {
                 <Dashboard />
               </ProtectedPage>
           } /> */}
+          <Route path="/terms-and-conditions" element={
+            <TermsAndConditions />
+          } />
+          <Route path="/privacy" element={
+            <PrivacyPolicy />
+          } />
           <Route path="/chat" 
           element={
             <ProtectedPage>

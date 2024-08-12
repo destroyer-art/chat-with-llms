@@ -774,12 +774,13 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
         # Get the chat model from the request and create the corresponding chat instance
         chat_config = model_company_mapping.get("gpt-4o-mini")
 
-        if chat_config['premium']:
-            if not verify_active_subscription(token_info):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Forbidden",
-                )
+        # check the number of generations left for the user
+        generations_left = get_generations(token_info)
+        if generations_left == 0:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Generations limit exceeded",
+            )
         
         chat = chat_config['model'](
             model_name="gpt-4o-mini",
@@ -817,6 +818,9 @@ async def chat_title(request: ChatRequest, token_info: dict = Depends(verify_tok
         # Handle validation errors specifically for better user feedback
         logging.error("Validation error: %s", ve)
         raise HTTPException(status_code=400, detail="Invalid request data") from ve
+    except HTTPException as he:
+        # Handle HTTP exceptions specifically for better user feedback
+        raise he
     except Exception as e:
         # Log and handle generic exceptions gracefully
         logging.error("Error processing chat request: %s", e)
