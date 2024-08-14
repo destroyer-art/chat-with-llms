@@ -1,5 +1,5 @@
 import React from "react";
-import { Card} from "@nextui-org/react";
+import {Card} from "@nextui-org/react";
 
 const TermsAndConditions = () => {
 
@@ -46,8 +46,36 @@ const TermsAndConditions = () => {
               <li>Premium: ₹1680 for 500 Generations on all models</li>
             </ul>
             <p>
-              Payments are processed securely through Razorpay. All fees are
-              non-refundable except as required by law.
+              Payments are processed securely through Razorpay.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-xl font-semibold">Refund and Cancellation Policy</h3>
+            <p>
+              At <strong>Chat-with-LLMs</strong>, we aim to ensure that our customers have a seamless experience. 
+              Since our product involves the purchase of generation credits for immediate use, we generally do not offer 
+              refunds or cancellations after a purchase is completed. However, refunds may be granted under the following circumstances:
+            </p>
+            <ul className="list-disc ml-5">
+              <li>
+                If you were charged incorrectly due to a technical error or billing issue, please contact us 
+                within 5 days of the transaction. We will investigate the issue, and if confirmed, either the 
+                appropriate number of generations will be added to your account, or a refund will be processed.
+              </li>
+              <li>
+                If the purchased generation credits were not added to your account due to a technical issue, 
+                and we are unable to resolve the problem within a reasonable timeframe, you may request a refund. 
+                In such cases, either the missing generations will be credited to your account, or a refund will be issued.
+              </li>
+              <li>
+                Refunds, if applicable, will be processed within 5-7 working days and credited back to your 
+                original method of payment.
+              </li>
+            </ul>
+            <p>
+              All refund requests must be made via email to <strong>support@chat-with-llms.com</strong>, 
+              including your order details and a description of the issue.
             </p>
           </section>
 
