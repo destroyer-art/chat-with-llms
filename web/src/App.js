@@ -6,6 +6,8 @@ import { ProtectedPage } from "./pages/ProtectedPage";
 import { DashboardV2 } from "./pages/DashboardV2";
 import TermsAndConditions from "./components/TermsAndConditions";
 import PrivacyPolicy from "./components/PrivacyPolicy";
+import ContactUs from "./components/ContactUs";
+import RefundPolicy from "./components/RefundPolicy";
 
 
 
@@ -36,25 +38,17 @@ function App() {
           <Route path="/" element={
             <LoginPage />
           } />
-          {/* <Route
-            path="/chat"
-            element={
-              <ProtectedPage>
-                <Dashboard />
-              </ProtectedPage>
-            }
-          />
-          <Route path="/chat/:chatId" 
-          element={
-            <ProtectedPage>
-                <Dashboard />
-              </ProtectedPage>
-          } /> */}
           <Route path="/terms-and-conditions" element={
             <TermsAndConditions />
           } />
           <Route path="/privacy" element={
             <PrivacyPolicy />
+          } />
+          <Route path="/refund-policy" element={
+            <RefundPolicy />
+          } />
+          <Route path="/contact-us" element={
+            <ContactUs />
           } />
           <Route path="/chat" 
           element={

@@ -105,7 +105,7 @@ const PrivacyPolicy = () => {
             <h3 className="text-xl font-semibold">Contact Us</h3>
             <p>
               If you have any questions about this Privacy Policy, please
-              contact us at support@chat-with-llms.com .
+              contact us at support@chat-with-llms.com
             </p>
           </section>
         </div>
