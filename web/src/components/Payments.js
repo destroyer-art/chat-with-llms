@@ -53,7 +53,6 @@ export const Payments = ({ isOpen, onClose }) => {
         });
 
         const data = await response.json();
-        console.log(data);
         setPaymentDetailsLoading(false);
         setPaymentDetails(data);
     } catch(err) {

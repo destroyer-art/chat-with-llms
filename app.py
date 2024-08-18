@@ -415,9 +415,8 @@ async def add_user_to_db(user_ref, user_data):
     """
     user = user_ref.get()
     if user.exists:
-        print(user.to_dict())
+        return
     else:
-        print("User does not exist")
         user_ref.set(user_data)
 
 
@@ -707,9 +706,6 @@ async def chat_event_streaming(request: ChatRequest, token_info: dict = Depends(
                     "output_token_length": output_token_length,
                     "cost": cost
                 }
-
-                print("Stats: ", stats)
-
                 # Database update after streaming is completed
                 chat_id = add_message_to_db(request, token_info['sub'], request.user_input, generated_ai_message, stats)
 
