@@ -1062,8 +1062,15 @@ async def fetch_payment(payment_id: str, token_info: dict = Depends(verify_token
         if payment_data:
             # fetch the payment details
             payment_data = Payment(client).fetch(payment_id)
-            print(payment_data)
-            return payment_data
+            payment_payload = {
+                "id": payment_data['id'],
+                "order_id": payment_data['order_id'],
+                "status": payment_data['status'],
+                "amount": payment_data['amount'],
+                "currency": payment_data['currency'],
+                "description": payment_data['description'],
+            }
+            return payment_payload
         else:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
