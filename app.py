@@ -594,11 +594,11 @@ def get_generations(token_info: dict = Depends(verify_google_token)):
         # create a new document for the user with the remaining generations
         user_generations_ref.set({
             'google_user_id': token_info['sub'],
-            'remaining_generations': 30,
+            'remaining_generations': 20,
             'created_at': google_firestore.SERVER_TIMESTAMP,
             'updated_at': google_firestore.SERVER_TIMESTAMP,
         })
-        return 30
+        return 20
 
 def update_generations_left(token_info: dict = Depends(verify_google_token), generations_left: int = 30):
     """Update the number of generations left for the user."""
