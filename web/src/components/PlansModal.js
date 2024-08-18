@@ -73,9 +73,7 @@ export const PlansModal = ({ isOpen, onClose }) => {
           window.location.reload();
         },
         prefill: {
-          name: "John Doe",
-          email: "johnDoe@xxx.com",
-          contact: "9999999999",
+          
         },
         theme : {
           color: "#3399cc",

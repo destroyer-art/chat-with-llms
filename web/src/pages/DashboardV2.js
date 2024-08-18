@@ -21,12 +21,13 @@ import loading from '../images/loading.webp';
 import { AiOutlineReload } from 'react-icons/ai';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { PlansModal } from "../components/PlansModal";
+import { Payments } from "../components/Payments";
 
 
 export const DashboardV2 = () => {
     const location = useLocation();
     const { userModel } = location.state || {};
-    
+
 
     const { chatIdParams } = useParams();
     const API_HOST = process.env.REACT_APP_API_HOST || "http://localhost:5000";
@@ -40,7 +41,7 @@ export const DashboardV2 = () => {
     const accessToken = localStorage.getItem("accessToken");
     const [modal, setModal] = useState(null);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    const [selectedModel, setSelectedModel] = useState( modelOptions.find((model) => model.value === userModel) || modelOptions[0]);
+    const [selectedModel, setSelectedModel] = useState(modelOptions.find((model) => model.value === userModel) || modelOptions[0]);
     const [messages, setMessages] = useState([]);
     let previousModel = null;
     let profilePicture = localStorage.getItem("profilePicture");
@@ -170,8 +171,8 @@ export const DashboardV2 = () => {
                         console.info("Event source connection established");
                         setIsStreaming(true);
                     } else {
-                       
-                        if (response.status === 403){
+
+                        if (response.status === 403) {
                             setGenerationsLeft(0);
                             // open the plans modal
                             setModal('plans');
@@ -467,6 +468,7 @@ export const DashboardV2 = () => {
                     {modal === 'settings' && <SettingsModal isOpen={isOpen} onClose={onClose} />}
                     {modal === 'logout' && <ConfirmationModal isOpen={isOpen} onClose={onClose} text="Are you sure you want to log out?" />}
                     {modal === 'plans' && <PlansModal isOpen={isOpen} onClose={onClose} />}
+                    {modal === 'payments' && <Payments isOpen={isOpen} onClose={onClose} />}
                 </div>
             </div>
 
@@ -508,10 +510,10 @@ export const DashboardV2 = () => {
                                 className="w-52 md:w-full ml-4"
                                 selectedKeys={[selectedModel?.value]}
                                 onChange={(event) => {
-                                        // check for plus subscription
-                                        let selectedModel = modelOptions.find((model) => model.value === event.target.value);
-                                        setSelectedModel(selectedModel);
-                                    }
+                                    // check for plus subscription
+                                    let selectedModel = modelOptions.find((model) => model.value === event.target.value);
+                                    setSelectedModel(selectedModel);
+                                }
                                 }
                                 label="Select model"
                                 startContent={selectedModel?.companyLogo}
@@ -547,6 +549,12 @@ export const DashboardV2 = () => {
                                         onOpen();
                                     }}>
                                         My Plans
+                                    </DropdownItem>
+                                    <DropdownItem key="My Payments" startContent={<TbPremiumRights />} showDivider onPress={() => {
+                                        setModal('payments');
+                                        onOpen();
+                                    }}>
+                                            My Payments
                                     </DropdownItem>
                                     <DropdownItem
                                         key="settings"

@@ -39,6 +39,7 @@ import razorpay
 from razorpay.resources.subscription import Subscription
 from razorpay.resources.customer import Customer
 from razorpay.resources.order import Order
+from razorpay.resources.payment import Payment
 import tiktoken
 from anthropic import Anthropic
 from vertexai.preview import tokenization
@@ -983,8 +984,6 @@ async def verify_payment(request: PaymentRequest, token_info: dict = Depends(ver
                 'updated_at': google_firestore.SERVER_TIMESTAMP,
             })
 
-            print(order_data)
-
             # get the current remaining generations for the user
             generations_left = get_generations(token_info)
 
@@ -1017,6 +1016,65 @@ async def verify_payment(request: PaymentRequest, token_info: dict = Depends(ver
         logging.error("Error verifying payment: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
+
+@app.get("/v1/fetch_payments", tags=["Order Endpoints"])
+async def fetch_receipt(token_info: dict = Depends(verify_token)):
+    """Fetch the receipt URL for a given payment."""
+    try:
+        if not ENABLE_PAYMENT:
+            raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Payment is disabled",
+            )
+        
+        # fetch the receipts for the user sorted by updated_at
+        receipts = []
+        receipt_ref = db.collection('payments').where('customer_id', '==', token_info['sub']).order_by('updated_at', direction=google_firestore.Query.DESCENDING).stream()
+
+        for receipt_data in receipt_ref:
+            receipt_data = receipt_data.to_dict()
+            # remove the customer_id from the receipt
+            receipt_data.pop('customer_id')
+            receipts.append(receipt_data)
+
+        return receipts
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error("Error fetching receipt: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
+
+@app.get("/v1/fetch_payment/{payment_id}", tags=["Order Endpoints"])
+async def fetch_payment(payment_id: str, token_info: dict = Depends(verify_token)):
+    """Fetch the receipt URL for a given payment."""
+    try:
+        if not ENABLE_PAYMENT:
+            raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Payment is disabled",
+            )
+        
+        # check if the payment_id exists for that customer_id
+        payment_ref = db.collection('payments').where('payment_id', '==', payment_id).where('customer_id', '==', token_info['sub']).stream()
+        payment_data = next(payment_ref, None)
+
+        if payment_data:
+            # fetch the payment details
+            payment_data = Payment(client).fetch(payment_id)
+            print(payment_data)
+            return payment_data
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Payment not found",
+            )
+        
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        logging.error("Error fetching payment: %s", e)
+        raise HTTPException(status_code=500, detail="Internal server error") from e
 
 if __name__ == "__main__":
 
