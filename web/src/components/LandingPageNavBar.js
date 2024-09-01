@@ -17,31 +17,29 @@ export const LandingPageNavBar = () => {
     });
 
     return (
-        <div className='flex justify-between min-h-[8dvh] border-b dark:bg-slate-900 dark:text-teal-400'>
+        <nav aria-label="Main Navigation" className='flex justify-between min-h-[8dvh] border-b dark:bg-slate-900 dark:text-teal-400'>
             <div className="px-4 lg:px-6 justify-start flex items-center">
-                <img src={aiMind} alt="ai-mind" className="h-10 w-10 pr-2" />
-                <span className="text-xs sm:text-xl font-bold">chat-with-llms</span>
+                <img src={aiMind} alt="AI Mind Logo" className="h-10 w-10 pr-2" />
+                <span className="text-xs sm:text-xl font-bold" aria-label="Website Name">Chat With LLMs</span>
             </div>
             <div className='px-4 lg:px-6 justify-end flex items-center'>
-                {/* <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleFailure}
-                    render={renderProps => (
-                        
-                    )}
-                /> */}
-                <Button color="primary" variant="bordered" className='dark:border-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 dark:text-gray-100' startContent={<FcGoogle />} onClick={
-                    async () => {
+                <Button 
+                    color="primary" 
+                    variant="bordered" 
+                    className='dark:border-violet-600 dark:bg-violet-600 dark:hover:bg-violet-700 dark:text-gray-100' 
+                    startContent={<FcGoogle />} 
+                    aria-label="Google Sign In"
+                    onClick={async () => {
                         const isVerified = await verifyGoogleAuth();
                         if (isVerified)
                             navigate('/chat');
                         else
                             login();
-                    }
-                }>
+                    }}
+                >
                     Sign in
                 </Button>
             </div>
-        </div>
+        </nav>
     );
 }
