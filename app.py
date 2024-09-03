@@ -417,6 +417,8 @@ async def add_user_to_db(user_ref, user_data):
     if user.exists:
         return
     else:
+        # add created_at to the user_data
+        user_data['created_at'] = google_firestore.SERVER_TIMESTAMP
         user_ref.set(user_data)
 
 
